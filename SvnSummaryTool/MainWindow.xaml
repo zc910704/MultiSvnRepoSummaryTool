@@ -1,0 +1,153 @@
+﻿<Window x:Class="SvnSummaryTool.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SvnSummaryTool"
+        xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="550" Width="800">
+    <d:Window.DataContext>
+        <local:MainViewModel></local:MainViewModel>
+    </d:Window.DataContext>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="330"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+        </Grid.RowDefinitions>
+        <!--导入部分-->
+        <Grid Grid.Row="0">            
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="30"></ColumnDefinition>
+                <ColumnDefinition Width="30"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="30"></ColumnDefinition>
+                <ColumnDefinition Width="30"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="30"></RowDefinition>
+                <RowDefinition Height="150"></RowDefinition>
+                <RowDefinition Height="150"></RowDefinition>
+            </Grid.RowDefinitions>
+            <Label Grid.Column="0" Grid.Row="0" HorizontalAlignment="Center">svn代码目录地址</Label>
+            <StackPanel Grid.Column="0" Grid.Row="1" Grid.RowSpan="2" Height="300">
+                <ListView ItemsSource="{Binding ProjectsPath}" Height="250" 
+                          x:Name="svnProjectsDirList"
+                          d:ItemsSource="{d:SampleData ItemCount=5}"
+                          SelectionMode="Single"
+                          SelectedItem="{Binding SelectedProjectPath}">
+                    <i:Interaction.Triggers>
+                        <i:EventTrigger EventName="SelectionChanged">
+                            <i:InvokeCommandAction 
+                                Command="{Binding SelectedSvnDirChangedCommand}"
+                                CommandParameter="{Binding Path=., ElementName=svnProjectsDirList}"></i:InvokeCommandAction>
+                        </i:EventTrigger>
+                    </i:Interaction.Triggers>
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <TextBox Text="{Binding .}" IsReadOnly="True" Width="{Binding ElementName=svnProjectsDirList, Path=ActualWidth}" Margin="0" Padding="0"></TextBox>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+                <GroupBox BorderThickness="2" BorderBrush="Gray" Margin="2" Header="日志拉取时间范围" Height="50">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Label>起始时间:</Label>
+                        <DatePicker SelectedDate="{Binding Path=StartTime, Mode=TwoWay}"></DatePicker>
+                        <Label>结束时间:</Label>
+                        <DatePicker SelectedDate="{Binding Path=EndTime, Mode=TwoWay}"></DatePicker>
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
+            <Button Grid.Column="1" Grid.Row="1" Command="{Binding RemoveSvnDirCommand}">移除</Button>
+            <Button Grid.Column="1" Grid.Row="2" Command="{Binding AddSvnDirCommand}">新增</Button>
+            <Button Grid.Column="2" Grid.Row="1" Grid.RowSpan="2" Command="{Binding FetchSvnLogCommand}">提取</Button>
+            <Label Grid.Column="3" Grid.Row="0"  HorizontalAlignment="Center">svn提取日志文件地址</Label>
+            <ListView ItemsSource="{Binding ProjectSvnLogInfo}" 
+                      Grid.Column="3" Grid.Row="1" 
+                      Grid.RowSpan="2" 
+                      d:ItemsSource="{d:SampleData ItemCount=5}"
+                      SelectedItem="{Binding SelectedSvnLogInfo}"
+                      SelectionMode="Single">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox Text="{Binding LogPath}" Width="auto"></TextBox>
+                            <Label>日志时间范围:</Label>
+                            <TextBox Text="{Binding Start}" Width="auto"></TextBox>
+                            <Label>~</Label>
+                            <TextBox Text="{Binding End}" Width="auto"></TextBox>
+                        </StackPanel>
+                        
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+            <Button Grid.Column="4" Grid.Row="1" Command="{Binding RemoveLogCommand}">移除</Button>
+            <Button Grid.Column="4" Grid.Row="2" Command="{Binding AddLogCommand}">新增</Button>
+            <Button Grid.Column="5" Grid.Row="1" Grid.RowSpan="2" Command="{Binding ConvertAndAnalysisCommand}">分析</Button>
+        </Grid>
+        <!--分析部分-->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"></RowDefinition>
+            </Grid.RowDefinitions>
+            <StackPanel Orientation="Vertical" Grid.Column="0" d:Height="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Grid}, AncestorLevel=1}, Path=ActualHeight}" x:Name="authorPanel">
+                <Label>作者:</Label>
+                <ListView ItemsSource="{Binding Authors}" Height="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type StackPanel}, AncestorLevel=2}, Path=ActualHeight}" d:ItemsSource="{d:SampleData ItemCount=5}">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <CheckBox></CheckBox>
+                                <TextBox Text="{Binding .}"></TextBox>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </StackPanel>
+            <StackPanel Orientation="Vertical" Grid.Column="1">
+                <StackPanel Orientation="Horizontal" Margin="3">
+                    <Label>作者:</Label>
+                    <TextBox Width="100"></TextBox>
+                    <Label>增加的行:</Label>
+                    <TextBox Width="100"></TextBox>
+                    <Label>删除的行:</Label>
+                    <TextBox Width="100"></TextBox>
+                    <Label>总行数:</Label>
+                    <TextBox Width="100"></TextBox>
+                </StackPanel>               
+                <DataGrid>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn 
+                            Header="作者"
+                            Width="100">                            
+                        </DataGridTextColumn>
+                        <DataGridTextColumn 
+                            Header="文件名"
+                            Width="100">
+                        </DataGridTextColumn>
+                        <DataGridTextColumn 
+                            Header="增加的行数"
+                            Width="100">
+                        </DataGridTextColumn>
+                        <DataGridTextColumn 
+                            Header="删除的行数"
+                            Width="100">
+                        </DataGridTextColumn>
+                        <DataGridTextColumn 
+                            Header="总行数"
+                            Width="100">
+                        </DataGridTextColumn>
+                    </DataGrid.Columns>
+
+                </DataGrid>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>
