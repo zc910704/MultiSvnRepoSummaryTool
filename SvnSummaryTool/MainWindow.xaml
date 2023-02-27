@@ -70,7 +70,7 @@
                       Grid.Column="3" Grid.Row="1" 
                       Grid.RowSpan="2" 
                       d:ItemsSource="{d:SampleData ItemCount=5}"
-                      SelectedItem="{Binding SelectedSvnLogInfo}"
+                      SelectedItem="{Binding SelectedSvnLogInfo, Mode=TwoWay}"
                       SelectionMode="Single">
                 <ListView.ItemTemplate>
                     <DataTemplate>
@@ -100,12 +100,29 @@
             </Grid.RowDefinitions>
             <StackPanel Orientation="Vertical" Grid.Column="0" d:Height="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Grid}, AncestorLevel=1}, Path=ActualHeight}" x:Name="authorPanel">
                 <Label>作者:</Label>
-                <ListView ItemsSource="{Binding Authors}" Height="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type StackPanel}, AncestorLevel=2}, Path=ActualHeight}" d:ItemsSource="{d:SampleData ItemCount=5}">
+                <ListView ItemsSource="{Binding Authors}" 
+                          Height="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type StackPanel}, AncestorLevel=2}, Path=ActualHeight}" 
+                          x:Name="authorListView"
+                          SelectionMode="Single"
+                          d:ItemsSource="{d:SampleData ItemCount=5}">
                     <ListView.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal">
-                                <CheckBox></CheckBox>
-                                <TextBox Text="{Binding .}"></TextBox>
+                                <CheckBox IsChecked="{Binding Path=IsChecked}"
+                                          x:Name="checkedBox">
+                                    <i:Interaction.Triggers>
+                                        <i:EventTrigger EventName="Checked">
+                                            <i:InvokeCommandAction Command="{Binding  Path=DataContext.AuthorCheckedChangedCommand, ElementName=authorListView}"
+                                                                   CommandParameter="{Binding Path=., ElementName=checkedBox }">                                                
+                                            </i:InvokeCommandAction>                                        
+                                        </i:EventTrigger>
+                                        <i:EventTrigger EventName="Unchecked">
+                                            <i:InvokeCommandAction Command="{Binding Path=DataContext.AuthorCheckedChangedCommand, ElementName=authorListView}">
+                                            </i:InvokeCommandAction>
+                                        </i:EventTrigger>
+                                    </i:Interaction.Triggers>
+                                </CheckBox>
+                                <Label Content="{Binding Path=Item}"></Label>
                             </StackPanel>
                         </DataTemplate>
                     </ListView.ItemTemplate>
@@ -113,14 +130,12 @@
             </StackPanel>
             <StackPanel Orientation="Vertical" Grid.Column="1">
                 <StackPanel Orientation="Horizontal" Margin="3">
-                    <Label>作者:</Label>
-                    <TextBox Width="100"></TextBox>
-                    <Label>增加的行:</Label>
-                    <TextBox Width="100"></TextBox>
+                    <Label>统计信息： 增加的行数:</Label>
+                    <Label Width="100" Content="{Binding AppendLineCount}"></Label>
                     <Label>删除的行:</Label>
-                    <TextBox Width="100"></TextBox>
+                    <Label Width="100" Content="{Binding DeleteLineCount}"></Label>
                     <Label>总行数:</Label>
-                    <TextBox Width="100"></TextBox>
+                    <Label Width="100" Content="{Binding Path=ModifyLineCount}"></Label>
                 </StackPanel>               
                 <DataGrid>
                     <DataGrid.Columns>
