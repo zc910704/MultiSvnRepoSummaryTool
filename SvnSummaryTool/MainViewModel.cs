@@ -51,6 +51,11 @@ namespace SvnSummaryTool
         [NotifyCanExecuteChangedFor(nameof(RemoveLogCommand))]
         private SvnLogInfo _SelectedSvnLogInfo = null;
         /// <summary>
+        /// 能否移除待分析的svn日志
+        /// </summary>
+        [ObservableProperty]
+        private bool _CanRemoveSvnLogInfoEnalbe = false;
+        /// <summary>
         /// 当前SVN所有提交的作者
         /// </summary>
         [ObservableProperty]
@@ -65,6 +70,11 @@ namespace SvnSummaryTool
         /// </summary>
         [ObservableProperty]
         private DateTime _EndTime = DateTime.Now;
+        /// <summary>
+        /// 当前统计信息表数据源
+        /// </summary>
+        [ObservableProperty]
+        private ObservableCollection<LogFormat> _DataTableSourece = new ObservableCollection<LogFormat>();
         /// <summary>
         /// 当前选择用户的新增行数
         /// </summary>
@@ -86,29 +96,40 @@ namespace SvnSummaryTool
         /// </summary>
         private List<LogFormat> _LogFormats = new List<LogFormat>();
 
-        public MainViewModel()
-        {
-
-        }
-
+        /// <summary>
+        /// 作者选择状态变更
+        /// </summary>
         [RelayCommand]
         private void AuthorCheckedChanged()
         {
-            var selectedAuthors = _Authors
+            var selectedAuthors = Authors
                 .Where(a => a.IsChecked)
                 .Select(a => a.Item).ToList();
             var selectedUserLog = _LogFormats
                 .Where(log => selectedAuthors.Contains(log.author));
 
-            AppendLineCount = selectedUserLog
-                .Select(s => s.appendLines)
-                .Aggregate((l1, l2) => l1 + l2);
+            if (selectedUserLog != null && selectedUserLog.Any())
+            {
+                AppendLineCount = selectedUserLog
+                    .Select(s => s.appendLines)
+                    .Aggregate((l1, l2) => l1 + l2);
 
-            DeleteLineCount = selectedUserLog
-                .Select(s => s.removeLines)
-                .Aggregate((l1, l2) => l1 + l2);
+                DeleteLineCount = selectedUserLog
+                    .Select(s => s.removeLines)
+                    .Aggregate((l1, l2) => l1 + l2);
+                DataTableSourece.Clear();
+                foreach (var item in selectedUserLog)
+                {
+                    DataTableSourece.Add(item);
+                }
+            }
+            else
+            {
+                AppendLineCount = 0;
+                DeleteLineCount = 0;
+                DataTableSourece.Clear();
+            }
         }
-
 
         /// <summary>
         /// 添加已经下载好的svn日志记录
@@ -127,10 +148,6 @@ namespace SvnSummaryTool
                     ProjectsPath.Add(folderBrowserDialog.SelectedPath);
                     SelectedProjectPath = folderBrowserDialog.SelectedPath;
                 }
-                else
-                {
-
-                }
             }            
         }
 
@@ -141,7 +158,6 @@ namespace SvnSummaryTool
         }
 
         private bool CanRemoveSvnDir() => CanRemoveSvnDirEnabled;
-
         
         [RelayCommand]
         private void SelectedSvnDirChanged()
@@ -149,6 +165,10 @@ namespace SvnSummaryTool
             CanRemoveSvnDirEnabled =!string.IsNullOrEmpty(SelectedProjectPath);
         }
 
+        /// <summary>
+        /// 异步获取日志
+        /// </summary>
+        /// <returns></returns>
         [RelayCommand]
         private async Task FetchSvnLogAsync()
         {
@@ -163,9 +183,8 @@ namespace SvnSummaryTool
             {
                 // 下载svn的log文件名
                 string logFileName = $"{svnDir.Split('\\').ToList().LastOrDefault()}.log";                
-                string logResult = await DownloadLogFile(logSaveDir, logFileName, svnDir);
                 // 检测是否下载成功
-                if (logResult.Contains("E200007"))
+                if (await SvnTools.DownloadLogFile(logSaveDir, logFileName, svnDir, StartTime, EndTime))
                 {
                     MessageBox.Show("请输入正确的项目地址", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
@@ -190,11 +209,16 @@ namespace SvnSummaryTool
         /// <summary>
         /// 删除要分析的日志
         /// </summary>
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanRemoveSvnLogInfo))]
         private void RemoveLog()
         {
             ProjectSvnLogInfo.Remove(SelectedSvnLogInfo);
         }
+        /// <summary>
+        /// 能否移除待分析的svn日志
+        /// </summary>
+        private bool CanRemoveSvnLogInfo => CanRemoveSvnLogInfoEnalbe;
+
         /// <summary>
         /// 新增要分析的日志
         /// </summary>
@@ -209,8 +233,11 @@ namespace SvnSummaryTool
                     var filename = fileDialog.FileName;
                     var fileInfo = new FileInfo(filename);
                     var dir = fileInfo.DirectoryName;
+                    // aaa.bbb.text
+                    var pureName = fileInfo.Name;
+                    var dotIndex = pureName.LastIndexOf('.');
                     // 不包含文件类型.后的文件名
-                    var name = fileInfo.Name.Split('.').FirstOrDefault();
+                    var name = pureName.Substring(0, dotIndex);
                     var svnDirFilePath = System.IO.Path.Combine(dir, $"{name}.path");
                     var logFilePath = $"{name}.log";
                     using (StreamReader sr = new StreamReader(svnDirFilePath))
@@ -223,13 +250,12 @@ namespace SvnSummaryTool
             }
         }
 
-        partial void OnSelectedSvnLogInfoChanged(SvnLogInfo value)
-        {
-
-        }
-
+        /// <summary>
+        /// 分析日志
+        /// </summary>
+        /// <returns></returns>
         [RelayCommand]
-        private async Task ConvertAndAnalysis()
+        private async Task ConvertAndAnalysisAsync()
         {
             _LogFormats.Clear();
             foreach (var svnLogInfo in ProjectSvnLogInfo) 
@@ -246,20 +272,7 @@ namespace SvnSummaryTool
             
         }
 
-        /// <summary>
-        /// 下载Log文件
-        /// </summary>
-        /// <param name="logPath"></param>
-        /// <param name="fileName"></param>
-        /// <returns></returns>
-        private async Task<string> DownloadLogFile(string logPath, string fileName, string dirPath)
-        {
-            var startTime = StartTime.ToString("yyyy-MM-dd");
-            var endTime = EndTime.AddDays(1).ToString("yyyy-MM-dd");
-            var cmd = $"svn log -v --xml -r {{\"{startTime}\"}}:{{\"{endTime}\"}} {dirPath} > {logPath}\\{fileName}";
-            return await Util.ExecuteCommandAsync(cmd);
-        }
-
+        partial void OnSelectedSvnLogInfoChanged(SvnLogInfo value) => CanRemoveSvnLogInfoEnalbe = value != null;
 
         /// <summary>
         /// 将Log对象转为格式化数组
@@ -283,8 +296,8 @@ namespace SvnSummaryTool
 
                 foreach (var path in paths)
                 {
-                    var val = await GetLineDiff(path.Value, localSvnDir, revision);
-                    if (val.Item1 == 0 && val.Item2 == 0)
+                    var val = await SvnTools.GetLineDiff(path.Value, localSvnDir, revision);
+                    if (val.AppendLine == 0 && val.RemoveLine == 0)
                     {
                         continue;
                     }
@@ -292,10 +305,10 @@ namespace SvnSummaryTool
                     var logFormat = new LogFormat();
                     logFormat.author = author;
                     logFormat.fileName = path.Value;
-                    logFormat.appendLines = val.Item1;
-                    logFormat.removeLines = val.Item2;
+                    logFormat.appendLines = val.AppendLine;
+                    logFormat.removeLines = val.RemoveLine;
                     logFormat.msg = msg;
-                    logFormat.totalLines = val.Item1 - val.Item2;
+                    logFormat.totalLines = val.AppendLine - val.RemoveLine;
                     logFormat.checkTime = checkDate.ToLocalTime();
                     formats.Add(logFormat);
                 }
@@ -346,79 +359,7 @@ namespace SvnSummaryTool
                    filePath.EndsWith(".ico");
         }
 
-        /// <summary>
-        /// 计算单个文件单次提交中的修改行数
-        /// </summary>
-        /// <param name="fileName"></param>
-        /// <param name="revision"></param>
-        /// <param name="appendLines"></param>
-        /// <param name="removeLines"></param>
-        private async Task<ValueTuple<int, int>> GetLineDiff(string fileName, string localSvnDir, int revision)
-        {
-            var appendLines = 0;
-            var removeLines = 0;
-            //svn diff 命令返回的解释 https://blog.csdn.net/weiwangchao_/article/details/19117191
-            string diffBuffer = await CallSvnDiff(fileName, localSvnDir, revision);
-            var lines = diffBuffer.Split(new string[] { "\r\n" }, StringSplitOptions.None).ToList();
 
-            foreach (var line in lines)
-            {
-                if (line.StartsWith("+"))
-                {
-                    appendLines++;
-                }
-                if (line.StartsWith("-"))
-                {
-                    removeLines++;
-                }
-            }
-            var rt = new ValueTuple<int, int>(appendLines, removeLines);
-            return rt;
-        }
-
-        /// <summary>
-        ///  调用svn diff操作，返回diff结果
-        /// </summary>
-        /// <param name="urlFileName">svn的log返回的修改文件的url路径 <br/>
-        /// e.g. /branches/2.10.0.0/Code/Demo.cs</param>
-        /// <param name="localSvnDir">本地check的svn目录位置</param>
-        /// <param name="revision">版本号</param>
-        /// <returns></returns>
-        private async Task<string> CallSvnDiff(string urlFileName, string localSvnDir, int revision)
-        {
-            localSvnDir = localSvnDir.Trim().Replace("\r\n", "");
-            // 获取svn库check的相对根地址，用来替换文件目录 e.g. /branches/2.10.0.0
-            var rootUrl = await GetSvnRoot(localSvnDir);
-            // /Code/Demo.cs
-            var localfileName = urlFileName.Substring(urlFileName.IndexOf(rootUrl) + rootUrl.Length);
-            if (!localfileName.StartsWith("/"))
-            {
-                localfileName = "/" + localfileName;
-            }
-            // 替换"/" 为系统路径分隔符 windows下为"\"
-            localfileName = localfileName.Replace('/', System.IO.Path.DirectorySeparatorChar);
-
-            var cmd = $"svn diff --old {localSvnDir}{localfileName}@{revision - 1} --new {localSvnDir}{localfileName}@{revision}";
-            var fileDiff = await Util.ExecuteCommandAsync(cmd);
-            return fileDiff;
-        }
-
-        /// <summary>
-        /// 获取svn远程仓库相对svn远程根目录的地址 <br/>
-        /// e.g. /branches/2.10.0.0
-        /// </summary>
-        /// <returns></returns>
-        private async Task<string> GetSvnRoot(string svnDir)
-        {
-            var cmd = $"svn info --xml {svnDir}";
-            var info = await Util.ExecuteCommandAsync(cmd);
-            XmlDocument infoXML = new XmlDocument();
-            infoXML.LoadXml(info);
-            var root = infoXML.SelectSingleNode("info/entry/relative-url").InnerXml;
-            // ^/branches/2.10.0.0 去掉最开始的^开始符号
-            var rootUrl = HttpUtility.UrlDecode(root).Substring(1);
-            return rootUrl;
-        }
     }
 
 

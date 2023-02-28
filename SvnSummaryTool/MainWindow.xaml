@@ -75,11 +75,11 @@
                 <ListView.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Orientation="Horizontal">
-                            <TextBox Text="{Binding LogPath}" Width="auto"></TextBox>
+                            <Label Content="{Binding Path=LogPath}" Width="auto"></Label>
                             <Label>日志时间范围:</Label>
-                            <TextBox Text="{Binding Start}" Width="auto"></TextBox>
+                            <Label Content="{Binding Start}" Width="auto"></Label>
                             <Label>~</Label>
-                            <TextBox Text="{Binding End}" Width="auto"></TextBox>
+                            <Label Content="{Binding End}" Width="auto"></Label>
                         </StackPanel>
                         
                     </DataTemplate>
@@ -96,73 +96,90 @@
                 <ColumnDefinition Width="*"></ColumnDefinition>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
+                <RowDefinition Height="35"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
             </Grid.RowDefinitions>
-            <StackPanel Orientation="Vertical" Grid.Column="0" d:Height="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Grid}, AncestorLevel=1}, Path=ActualHeight}" x:Name="authorPanel">
-                <Label>作者:</Label>
-                <ListView ItemsSource="{Binding Authors}" 
-                          Height="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type StackPanel}, AncestorLevel=2}, Path=ActualHeight}" 
-                          x:Name="authorListView"
-                          SelectionMode="Single"
-                          d:ItemsSource="{d:SampleData ItemCount=5}">
-                    <ListView.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <CheckBox IsChecked="{Binding Path=IsChecked}"
+            <Label Grid.Row="0" 
+                   Grid.Column="0"
+                   Margin="3">作者:</Label>
+            <ListView Grid.Row="1" 
+                      Grid.Column="0"
+                      ItemsSource="{Binding Authors}"                       
+                      x:Name="authorListView"
+                      SelectionMode="Single"
+                      d:ItemsSource="{d:SampleData ItemCount=5}">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox IsChecked="{Binding Path=IsChecked}"
                                           x:Name="checkedBox">
-                                    <i:Interaction.Triggers>
-                                        <i:EventTrigger EventName="Checked">
-                                            <i:InvokeCommandAction Command="{Binding  Path=DataContext.AuthorCheckedChangedCommand, ElementName=authorListView}"
-                                                                   CommandParameter="{Binding Path=., ElementName=checkedBox }">                                                
-                                            </i:InvokeCommandAction>                                        
-                                        </i:EventTrigger>
-                                        <i:EventTrigger EventName="Unchecked">
-                                            <i:InvokeCommandAction Command="{Binding Path=DataContext.AuthorCheckedChangedCommand, ElementName=authorListView}">
-                                            </i:InvokeCommandAction>
-                                        </i:EventTrigger>
-                                    </i:Interaction.Triggers>
-                                </CheckBox>
-                                <Label Content="{Binding Path=Item}"></Label>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-            </StackPanel>
-            <StackPanel Orientation="Vertical" Grid.Column="1">
-                <StackPanel Orientation="Horizontal" Margin="3">
+                                <i:Interaction.Triggers>
+                                    <i:EventTrigger EventName="Checked">
+                                        <i:InvokeCommandAction Command="{Binding  Path=DataContext.AuthorCheckedChangedCommand, ElementName=authorListView}"
+                                                                   CommandParameter="{Binding Path=., ElementName=checkedBox }">
+                                        </i:InvokeCommandAction>
+                                    </i:EventTrigger>
+                                    <i:EventTrigger EventName="Unchecked">
+                                        <i:InvokeCommandAction Command="{Binding Path=DataContext.AuthorCheckedChangedCommand, ElementName=authorListView}">
+                                        </i:InvokeCommandAction>
+                                    </i:EventTrigger>
+                                </i:Interaction.Triggers>
+                            </CheckBox>
+                            <Label Content="{Binding Path=Item}"></Label>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+            <StackPanel Orientation="Horizontal" 
+                        Margin="3"
+                        Grid.Column="1"
+                        Grid.Row="0">
                     <Label>统计信息： 增加的行数:</Label>
                     <Label Width="100" Content="{Binding AppendLineCount}"></Label>
                     <Label>删除的行:</Label>
                     <Label Width="100" Content="{Binding DeleteLineCount}"></Label>
                     <Label>总行数:</Label>
                     <Label Width="100" Content="{Binding Path=ModifyLineCount}"></Label>
-                </StackPanel>               
-                <DataGrid>
-                    <DataGrid.Columns>
-                        <DataGridTextColumn 
+                </StackPanel>
+            <DataGrid 
+                    CanUserAddRows="False"
+                    Grid.Column="1"
+                    Grid.Row="1"
+                    AutoGenerateColumns="False"
+                    ItemsSource="{Binding DataTableSourece}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn
+                            Binding="{Binding Path=author}"
                             Header="作者"
-                            Width="100">                            
-                        </DataGridTextColumn>
-                        <DataGridTextColumn 
+                            Width="100">
+                    </DataGridTextColumn>
+                    <DataGridTextColumn 
+                            Binding="{Binding Path=fileName}"
                             Header="文件名"
                             Width="100">
-                        </DataGridTextColumn>
-                        <DataGridTextColumn 
+                    </DataGridTextColumn>
+                    <DataGridTextColumn 
+                            Binding="{Binding Path=appendLines}"
                             Header="增加的行数"
                             Width="100">
-                        </DataGridTextColumn>
-                        <DataGridTextColumn 
+                    </DataGridTextColumn>
+                    <DataGridTextColumn 
+                            Binding="{Binding Path=removeLines}"
                             Header="删除的行数"
                             Width="100">
-                        </DataGridTextColumn>
-                        <DataGridTextColumn 
+                    </DataGridTextColumn>
+                    <DataGridTextColumn 
+                            Binding="{Binding Path=totalLines}"
                             Header="总行数"
                             Width="100">
-                        </DataGridTextColumn>
-                    </DataGrid.Columns>
-
-                </DataGrid>
-            </StackPanel>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn 
+                            Binding="{Binding Path=msg}"
+                            Header="提交信息"
+                            Width="*">
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
         </Grid>
     </Grid>
 </Window>
