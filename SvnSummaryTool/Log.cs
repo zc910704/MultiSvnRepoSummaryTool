@@ -95,6 +95,10 @@ namespace SvnSummaryTool
         public DateTime checkTime { get; set; }
         [DisplayName("修改信息")]
         public string msg { get; set; }
+        /// <summary>
+        /// 本地svn路径
+        /// </summary>
+        public string LocalSvnDir { get; set; }
     }
 
     public class LogSummary

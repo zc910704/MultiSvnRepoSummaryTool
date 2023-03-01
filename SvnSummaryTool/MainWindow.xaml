@@ -99,9 +99,18 @@
                 <RowDefinition Height="35"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
             </Grid.RowDefinitions>
-            <Label Grid.Row="0" 
-                   Grid.Column="0"
-                   Margin="3">作者:</Label>
+            <StackPanel Orientation="Horizontal" 
+                        Margin="3"
+                        Grid.Column="0"
+                        Grid.Row="0"
+                        Grid.ColumnSpan="2">
+                <Label>统计信息: 增加的行数:</Label>
+                <Label Width="100" Content="{Binding AppendLineCount}"></Label>
+                <Label>删除的行数:</Label>
+                <Label Width="100" Content="{Binding DeleteLineCount}"></Label>
+                <Label>总行数:</Label>
+                <Label Width="100" Content="{Binding Path=ModifyLineCount}"></Label>
+            </StackPanel>
             <ListView Grid.Row="1" 
                       Grid.Column="0"
                       ItemsSource="{Binding Authors}"                       
@@ -129,18 +138,7 @@
                         </StackPanel>
                     </DataTemplate>
                 </ListView.ItemTemplate>
-            </ListView>
-            <StackPanel Orientation="Horizontal" 
-                        Margin="3"
-                        Grid.Column="1"
-                        Grid.Row="0">
-                    <Label>统计信息： 增加的行数:</Label>
-                    <Label Width="100" Content="{Binding AppendLineCount}"></Label>
-                    <Label>删除的行:</Label>
-                    <Label Width="100" Content="{Binding DeleteLineCount}"></Label>
-                    <Label>总行数:</Label>
-                    <Label Width="100" Content="{Binding Path=ModifyLineCount}"></Label>
-                </StackPanel>
+            </ListView>           
             <DataGrid 
                 CanUserAddRows="False"
                 Grid.Column="1"
@@ -149,6 +147,8 @@
                 CanUserResizeColumns="True"
                 Grid.Row="1"
                 AutoGenerateColumns="False"
+                x:Name="datagrid"
+                SelectedItem="{Binding Path=SelectedLogFormat, Mode=TwoWay}"
                 ItemsSource="{Binding DataTableSourece}">
                 <DataGrid.Columns>
                     <DataGridTextColumn 
@@ -173,12 +173,12 @@
                     </DataGridTextColumn>
                     <DataGridTextColumn 
                             Binding="{Binding Path=appendLines}"
-                            Header="增加的行数"
+                            Header="增加行数"
                             Width="60">
                     </DataGridTextColumn>
                     <DataGridTextColumn 
                             Binding="{Binding Path=removeLines}"
-                            Header="删除的行数"
+                            Header="删除行数"
                             Width="60">
                     </DataGridTextColumn>
                     <DataGridTextColumn 
@@ -191,10 +191,10 @@
                             Header="提交信息"
                             Width="*">
                     </DataGridTextColumn>
-                    <DataGridTemplateColumn Header="使用vs code">
+                    <DataGridTemplateColumn Header="使用VsCode">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Button>查看提交</Button>
+                                <Button Command="{Binding ElementName=datagrid, Path=DataContext.ShowDiffInVsCodeCommand}">查看</Button>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

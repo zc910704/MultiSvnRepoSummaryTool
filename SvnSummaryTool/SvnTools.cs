@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,6 +12,11 @@ namespace SvnSummaryTool
 {
     public static class SvnTools
     {
+        /// <summary>
+        /// 映射svn本地仓库地址的路径到相对repo的路径
+        /// e.g. /branches/2.10.0.0
+        /// </summary>
+        private static ConcurrentDictionary<string , string> _svnDirToUrlDictCache = new ConcurrentDictionary<string, string> ();
         /// <summary>
         /// 下载Log文件
         /// </summary>
@@ -36,14 +42,22 @@ namespace SvnSummaryTool
         /// <returns></returns>
         public static async Task<string> GetSvnRoot(string svnDir)
         {
-            var cmd = $"svn info --xml {svnDir}";
-            var info = await Util.ExecuteCommandAsync(cmd);
-            XmlDocument infoXML = new XmlDocument();
-            infoXML.LoadXml(info);
-            var root = infoXML.SelectSingleNode("info/entry/relative-url")!.InnerXml;
-            // ^/branches/2.10.0.0 去掉最开始的^开始符号
-            var rootUrl = HttpUtility.UrlDecode(root).Substring(1);
-            return rootUrl;
+            if (_svnDirToUrlDictCache.ContainsKey(svnDir))
+            {
+                return _svnDirToUrlDictCache[svnDir];
+            }
+            else
+            {
+                var cmd = $"svn info --xml {svnDir}";
+                var info = await Util.ExecuteCommandAsync(cmd);
+                XmlDocument infoXML = new XmlDocument();
+                infoXML.LoadXml(info);
+                var root = infoXML.SelectSingleNode("info/entry/relative-url")!.InnerXml;
+                // ^/branches/2.10.0.0 去掉最开始的^开始符号
+                var rootUrl = HttpUtility.UrlDecode(root).Substring(1);
+                _svnDirToUrlDictCache[svnDir] = rootUrl;
+                return rootUrl;
+            }
         }
 
         /// <summary>
@@ -86,14 +100,15 @@ namespace SvnSummaryTool
         /// 在vscode中比较版本差别
         /// </summary>
         /// <returns></returns>
-        public static async Task ShowDiffInVscode()
+        public static async Task ShowDiffInVscode(LogFormat logFormat)
         {
+            var localfilePath = ConvertUrlToLocalFilePath(logFormat.LocalSvnDir, logFormat.fileName);
             // https://stackoverflow.com/questions/74100260/how-to-compare-files-between-two-svn-revisions-in-vs-code
-
-            // ok: svn diff --old CCP6600.cs@5817--new CCP6600.cs@5818--diff - cmd "C:\Program Files\Microsoft VS Code\Code.exe" - x "--wait --diff"
-
-            // svn diff -r 5818 CCP6600.cs--diff - cmd  Code - x "--wait --diff"
-
+            // 两种都可以
+            // 1. svn diff --old CCP6600.cs@5817 --new CCP6600.cs@5818 --diff-cmd "C:\Program Files\Microsoft VS Code\Code.exe" - x "--wait --diff"
+            // 2. svn diff -r 5818 CCP6600.cs --diff-cmd  Code -x "--wait --diff"
+            var cmd = $"svn diff -r {localfilePath} {logFormat.version} --diff-cmd Code -x \"--wait --diff\"";
+            await Util.ExecuteCommandAsync(cmd);
         }
 
 
@@ -107,6 +122,19 @@ namespace SvnSummaryTool
         /// <returns></returns>
         private static async Task<string> CallSvnDiff(string urlFileName, string localSvnDir, int revision)
         {
+
+            var localfilePath = ConvertUrlToLocalFilePath(localSvnDir, urlFileName);
+            var cmd = $"svn diff --old {localfilePath}@{revision - 1} --new {localfilePath}@{revision}";
+            var fileDiff = await Util.ExecuteCommandAsync(cmd);
+            return fileDiff;
+        }
+
+        /// <summary>
+        /// 将svn路径转为本地路径
+        /// </summary>
+        /// <returns></returns>
+        private static async Task<string> ConvertUrlToLocalFilePath(string localSvnDir, string urlFileName)
+        {
             localSvnDir = localSvnDir.Trim().Replace("\r\n", "");
             // 获取svn库check的相对根地址，用来替换文件目录 e.g. /branches/2.10.0.0
             var rootUrl = await SvnTools.GetSvnRoot(localSvnDir);
@@ -119,9 +147,7 @@ namespace SvnSummaryTool
             // 替换"/" 为系统路径分隔符 windows下为"\"
             localfileName = localfileName.Replace('/', System.IO.Path.DirectorySeparatorChar);
 
-            var cmd = $"svn diff --old {localSvnDir}{localfileName}@{revision - 1} --new {localSvnDir}{localfileName}@{revision}";
-            var fileDiff = await Util.ExecuteCommandAsync(cmd);
-            return fileDiff;
+            return $"{localSvnDir}{localfileName}";
         }
     }
 
