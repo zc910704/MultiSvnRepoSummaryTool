@@ -49,7 +49,7 @@
                     </i:Interaction.Triggers>
                     <ListView.ItemTemplate>
                         <DataTemplate>
-                            <TextBox Text="{Binding .}" IsReadOnly="True" Width="{Binding ElementName=svnProjectsDirList, Path=ActualWidth}" Margin="0" Padding="0"></TextBox>
+                            <Label Content="{Binding .}" Width="{Binding ElementName=svnProjectsDirList, Path=ActualWidth}" Margin="0" Padding="0"></Label>
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
@@ -142,12 +142,24 @@
                     <Label Width="100" Content="{Binding Path=ModifyLineCount}"></Label>
                 </StackPanel>
             <DataGrid 
-                    CanUserAddRows="False"
-                    Grid.Column="1"
-                    Grid.Row="1"
-                    AutoGenerateColumns="False"
-                    ItemsSource="{Binding DataTableSourece}">
+                CanUserAddRows="False"
+                Grid.Column="1"
+                CanUserDeleteRows="False"
+                CanUserResizeColumns="True"
+                Grid.Row="1"
+                AutoGenerateColumns="False"
+                ItemsSource="{Binding DataTableSourece}">
                 <DataGrid.Columns>
+                    <DataGridTextColumn 
+                            Binding="{Binding Path=version}"
+                            Header="Reversion"
+                            Width="80">
+                    </DataGridTextColumn>
+                    <DataGridTextColumn 
+                            Binding="{Binding Path=checkTime}"
+                            Header="Reversion"
+                            Width="140">
+                    </DataGridTextColumn>
                     <DataGridTextColumn
                             Binding="{Binding Path=author}"
                             Header="作者"
@@ -156,22 +168,22 @@
                     <DataGridTextColumn 
                             Binding="{Binding Path=fileName}"
                             Header="文件名"
-                            Width="100">
+                            Width="auto">
                     </DataGridTextColumn>
                     <DataGridTextColumn 
                             Binding="{Binding Path=appendLines}"
                             Header="增加的行数"
-                            Width="100">
+                            Width="60">
                     </DataGridTextColumn>
                     <DataGridTextColumn 
                             Binding="{Binding Path=removeLines}"
                             Header="删除的行数"
-                            Width="100">
+                            Width="60">
                     </DataGridTextColumn>
                     <DataGridTextColumn 
                             Binding="{Binding Path=totalLines}"
                             Header="总行数"
-                            Width="100">
+                            Width="80">
                     </DataGridTextColumn>
                     <DataGridTextColumn 
                             Binding="{Binding Path=msg}"

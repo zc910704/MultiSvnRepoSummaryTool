@@ -79,6 +79,8 @@ namespace SvnSummaryTool
     }
     public class LogFormat
     {
+        [DisplayName("版本")]
+        public int version { get; set; }
         [DisplayName("作者")]
         public string author { get; set; }
         [DisplayName("文件路径")]

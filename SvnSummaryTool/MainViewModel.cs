@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using System.Windows.Forms;
@@ -94,7 +96,7 @@ namespace SvnSummaryTool
         /// <summary>
         /// 当前未筛选的日志
         /// </summary>
-        private List<LogFormat> _LogFormats = new List<LogFormat>();
+        private ConcurrentBag<LogFormat> _LogFormats = new ConcurrentBag<LogFormat>();
 
         /// <summary>
         /// 作者选择状态变更
@@ -184,7 +186,7 @@ namespace SvnSummaryTool
                 // 下载svn的log文件名
                 string logFileName = $"{svnDir.Split('\\').ToList().LastOrDefault()}.log";                
                 // 检测是否下载成功
-                if (await SvnTools.DownloadLogFile(logSaveDir, logFileName, svnDir, StartTime, EndTime))
+                if (!await SvnTools.DownloadLogFile(logSaveDir, logFileName, svnDir, StartTime, EndTime))
                 {
                     MessageBox.Show("请输入正确的项目地址", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
@@ -258,18 +260,20 @@ namespace SvnSummaryTool
         private async Task ConvertAndAnalysisAsync()
         {
             _LogFormats.Clear();
-            foreach (var svnLogInfo in ProjectSvnLogInfo) 
-            {                
+            Authors.Clear();
+            await Parallel.ForEachAsync(ProjectSvnLogInfo, CancellationToken.None, async (svnLogInfo, cancellationToken) =>
+            {
                 // 格式化Log对象，并计算修改行数
                 var current = await GetLogFormats(svnLogInfo.Log, svnLogInfo.SvnDir);
-                _LogFormats.AddRange(current);
-            }
-            Authors.Clear();
+                foreach (var c in current)
+                {
+                    _LogFormats.Add(c);
+                }
+            });
             foreach (var author in _LogFormats.Select(f => f.author).Distinct())
-            { 
+            {
                 Authors.Add(new CanCheckedItem<string>(author));
             }
-            
         }
 
         partial void OnSelectedSvnLogInfoChanged(SvnLogInfo value) => CanRemoveSvnLogInfoEnalbe = value != null;
@@ -288,6 +292,7 @@ namespace SvnSummaryTool
                 string author = logentry.Author.Value;
                 DateTime checkDate = logentry.Date.Value;
                 var msg = logentry.Msg.Value;
+                var reversion = logentry.ReVision;
 
                 List<Path> paths = logentry.Paths.Path.Where(x =>
                                                         x.Kind == "file" &&
@@ -308,6 +313,7 @@ namespace SvnSummaryTool
                     logFormat.appendLines = val.AppendLine;
                     logFormat.removeLines = val.RemoveLine;
                     logFormat.msg = msg;
+                    logFormat.version = reversion;
                     logFormat.totalLines = val.AppendLine - val.RemoveLine;
                     logFormat.checkTime = checkDate.ToLocalTime();
                     formats.Add(logFormat);
