@@ -83,6 +83,21 @@ namespace SvnSummaryTool
         }
 
         /// <summary>
+        /// 在vscode中比较版本差别
+        /// </summary>
+        /// <returns></returns>
+        public static async Task ShowDiffInVscode()
+        {
+            // https://stackoverflow.com/questions/74100260/how-to-compare-files-between-two-svn-revisions-in-vs-code
+
+            // ok: svn diff --old CCP6600.cs@5817--new CCP6600.cs@5818--diff - cmd "C:\Program Files\Microsoft VS Code\Code.exe" - x "--wait --diff"
+
+            // svn diff -r 5818 CCP6600.cs--diff - cmd  Code - x "--wait --diff"
+
+        }
+
+
+        /// <summary>
         ///  调用svn diff操作，返回diff结果
         /// </summary>
         /// <param name="urlFileName">svn的log返回的修改文件的url路径 <br/>

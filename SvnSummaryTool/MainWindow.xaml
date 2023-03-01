@@ -145,6 +145,7 @@
                 CanUserAddRows="False"
                 Grid.Column="1"
                 CanUserDeleteRows="False"
+                IsReadOnly="True"
                 CanUserResizeColumns="True"
                 Grid.Row="1"
                 AutoGenerateColumns="False"
@@ -157,7 +158,7 @@
                     </DataGridTextColumn>
                     <DataGridTextColumn 
                             Binding="{Binding Path=checkTime}"
-                            Header="Reversion"
+                            Header="提交时间"
                             Width="140">
                     </DataGridTextColumn>
                     <DataGridTextColumn
@@ -190,6 +191,13 @@
                             Header="提交信息"
                             Width="*">
                     </DataGridTextColumn>
+                    <DataGridTemplateColumn Header="使用vs code">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button>查看提交</Button>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                 </DataGrid.Columns>
             </DataGrid>
         </Grid>
