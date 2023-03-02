@@ -325,7 +325,7 @@ namespace SvnSummaryTool
                                 entry.totalLines = val.AppendLine + val.RemoveLine;
                                 Interlocked.Increment(ref pos);
 
-                                progress.Report((int)(((float)pos / (float)total)));
+                                progress.Report((int)(((float)pos / (float)total) * 100));
                             });
         }
 
