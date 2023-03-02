@@ -26,3 +26,9 @@
 3. 点击使用vscode查看功能可以在vs code中打开提交记录查看
 
 4. 点击计算变更, 将利用svn diff功能获取每次提交的变更行数
+
+- 开源声明
+
+	+ 基于 [dingguotu/SVNTool](https://github.com/dingguotu/SVNTool) 使用wpf, CommunityToolkit.mvvm, Behavior.wpf 实现的异步多线程版本
+
+	+ chatgpt提供了一些示例
