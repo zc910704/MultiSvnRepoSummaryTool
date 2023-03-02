@@ -12,6 +12,7 @@
 
 	- .Net6
 	- 将vs code配置到环境变量中
+	- svn安装命令行工具
 
 - 界面截图
 
@@ -29,6 +30,6 @@
 
 - 开源声明
 
-	+ 基于 [dingguotu/SVNTool](https://github.com/dingguotu/SVNTool) 使用wpf, CommunityToolkit.mvvm, Behavior.wpf 实现的异步多线程版本
+	+ 受 [dingguotu/SVNTool](https://github.com/dingguotu/SVNTool) 项目启发（使用了部分代码）。 使用wpf, CommunityToolkit.mvvm, Behavior.wpf 实现的异步多线程版本
 
 	+ chatgpt提供了一些示例
