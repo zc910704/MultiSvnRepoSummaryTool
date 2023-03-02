@@ -102,12 +102,12 @@ namespace SvnSummaryTool
         /// <returns></returns>
         public static async Task ShowDiffInVscode(LogFormat logFormat)
         {
-            var localfilePath = ConvertUrlToLocalFilePath(logFormat.LocalSvnDir, logFormat.fileName);
+            var localfilePath = await ConvertUrlToLocalFilePath(logFormat.LocalSvnDir, logFormat.fileName);
             // https://stackoverflow.com/questions/74100260/how-to-compare-files-between-two-svn-revisions-in-vs-code
             // 两种都可以
             // 1. svn diff --old CCP6600.cs@5817 --new CCP6600.cs@5818 --diff-cmd "C:\Program Files\Microsoft VS Code\Code.exe" - x "--wait --diff"
             // 2. svn diff -r 5818 CCP6600.cs --diff-cmd  Code -x "--wait --diff"
-            var cmd = $"svn diff -r {localfilePath} {logFormat.version} --diff-cmd Code -x \"--wait --diff\"";
+            var cmd = $"svn diff -r {logFormat.version} {localfilePath} --diff-cmd Code -x \"--wait --diff\"";
             await Util.ExecuteCommandAsync(cmd);
         }
 
@@ -123,7 +123,7 @@ namespace SvnSummaryTool
         private static async Task<string> CallSvnDiff(string urlFileName, string localSvnDir, int revision)
         {
 
-            var localfilePath = ConvertUrlToLocalFilePath(localSvnDir, urlFileName);
+            var localfilePath = await ConvertUrlToLocalFilePath(localSvnDir, urlFileName);
             var cmd = $"svn diff --old {localfilePath}@{revision - 1} --new {localfilePath}@{revision}";
             var fileDiff = await Util.ExecuteCommandAsync(cmd);
             return fileDiff;

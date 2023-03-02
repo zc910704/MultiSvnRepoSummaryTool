@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using System.Windows.Forms;
+using System.Windows.Shapes;
 using System.Xml;
 using System.Xml.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -95,6 +96,11 @@ namespace SvnSummaryTool
         /// </summary>
         [ObservableProperty]
         private LogFormat _SelectedLogFormat = null;
+        /// <summary>
+        /// 处理进度
+        /// </summary>
+        [ObservableProperty]
+        private int _Progress = 0;
         /// <summary>
         /// 当前修改总行数
         /// </summary>
@@ -265,7 +271,7 @@ namespace SvnSummaryTool
         /// </summary>
         /// <returns></returns>
         [RelayCommand]
-        private async Task ConvertAndAnalysisAsync()
+        private void Convert()
         {
             _LogFormats.Clear();
             Authors.Clear();
@@ -276,37 +282,51 @@ namespace SvnSummaryTool
             {
                 foreach (var entry in svnInfo.Log.Logentry)
                 {
-                    logEntrywithInfo.Add(new Tuple<SvnLogInfo, Logentry>(svnInfo, entry));
+                    // 格式化Log对象
+                    var current = ConvertLogEntry(svnInfo.SvnDir, entry);
+                    foreach (var c in current)
+                    {
+                        _LogFormats.Add(c);
+                    }
                 }                
             }
 
-            var total = logEntrywithInfo.Count;
-            var pos = 0;
-            Progress<float> progress = new Progress<float>();
-            progress.ProgressChanged += Progress_ProgressChanged;
-
-            await Parallel.ForEachAsync(logEntrywithInfo, new ParallelOptions() { MaxDegreeOfParallelism = 20}, 
-                async (entry, cancellationToken) =>
-            {
-                // 格式化Log对象，并计算修改行数
-                var current = await ConvertLogEntry(entry.Item1.SvnDir, entry.Item2);
-                foreach (var c in current)
-                {
-                    _LogFormats.Add(c);
-                }
-                Interlocked.Increment(ref pos);
-                (progress as IProgress<float>)?.Report((float)pos/(float)total);
-            });
             foreach (var author in _LogFormats.Select(f => f.author).Distinct())
             {
                 Authors.Add(new CanCheckedItem<string>(author));
             }
-            progress.ProgressChanged -= Progress_ProgressChanged;
+
         }
 
-        private void Progress_ProgressChanged(object? sender, float e)
+        [RelayCommand]
+        private async Task StartCalculateDiffAsync()
         {
+            var progress = new Progress<int>(value =>
+            {
+                Progress = value;
+            });
+            await DoCalculateDiffAsync(progress);
 
+        }
+
+        private async Task DoCalculateDiffAsync(IProgress<int> progress)
+        {
+            var total = _LogFormats.Count;
+            var pos = 0;
+
+            await Parallel.ForEachAsync(_LogFormats, new ParallelOptions() { MaxDegreeOfParallelism = 20 },
+                            async (entry, cancellationToken) =>
+                            {
+                                // 格式化Log对象，并计算修改行数
+                                var val = await SvnTools.GetLineDiff(entry.fileName, entry.LocalSvnDir, entry.version);
+
+                                entry.appendLines = val.AppendLine;
+                                entry.removeLines = val.RemoveLine;
+                                entry.totalLines = val.AppendLine + val.RemoveLine;
+                                Interlocked.Increment(ref pos);
+
+                                progress.Report((int)(((float)pos / (float)total)));
+                            });
         }
 
         /// <summary>
@@ -332,7 +352,7 @@ namespace SvnSummaryTool
         /// <param name="formats"></param>
         /// <param name="logentry"></param>
         /// <returns></returns>
-        private async Task<List<LogFormat>> ConvertLogEntry(string localSvnDir, Logentry logentry)
+        private List<LogFormat> ConvertLogEntry(string localSvnDir, Logentry logentry)
         {
             int revision = logentry.ReVision;
             string author = logentry.Author.Value;
@@ -348,20 +368,14 @@ namespace SvnSummaryTool
             var formats = new List<LogFormat>();
             foreach (var path in paths)
             {
-                var val = await SvnTools.GetLineDiff(path.Value, localSvnDir, revision);
-                if (val.AppendLine == 0 && val.RemoveLine == 0)
-                {
-                    continue;
-                }
-
                 var logFormat = new LogFormat();
                 logFormat.author = author;
                 logFormat.fileName = path.Value;
-                logFormat.appendLines = val.AppendLine;
-                logFormat.removeLines = val.RemoveLine;
+                logFormat.appendLines = 0;
+                logFormat.removeLines = 0;
                 logFormat.msg = msg;
                 logFormat.version = reversion;
-                logFormat.totalLines = val.AppendLine - val.RemoveLine;
+                logFormat.totalLines = 0;
                 logFormat.checkTime = checkDate.ToLocalTime();
                 logFormat.LocalSvnDir = localSvnDir;
                 formats.Add(logFormat);

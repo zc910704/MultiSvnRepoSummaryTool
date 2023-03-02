@@ -87,7 +87,7 @@
             </ListView>
             <Button Grid.Column="4" Grid.Row="1" Command="{Binding RemoveLogCommand}">移除</Button>
             <Button Grid.Column="4" Grid.Row="2" Command="{Binding AddLogCommand}">新增</Button>
-            <Button Grid.Column="5" Grid.Row="1" Grid.RowSpan="2" Command="{Binding ConvertAndAnalysisCommand}">分析</Button>
+            <Button Grid.Column="5" Grid.Row="1" Grid.RowSpan="2" Command="{Binding ConvertCommand}">分析</Button>
         </Grid>
         <!--分析部分-->
         <Grid Grid.Row="1">
@@ -105,11 +105,14 @@
                         Grid.Row="0"
                         Grid.ColumnSpan="2">
                 <Label>统计信息: 增加的行数:</Label>
-                <Label Width="100" Content="{Binding AppendLineCount}"></Label>
+                <Label Width="80" Content="{Binding AppendLineCount}"></Label>
                 <Label>删除的行数:</Label>
-                <Label Width="100" Content="{Binding DeleteLineCount}"></Label>
+                <Label Width="80" Content="{Binding DeleteLineCount}"></Label>
                 <Label>总行数:</Label>
-                <Label Width="100" Content="{Binding Path=ModifyLineCount}"></Label>
+                <Label Width="80" Content="{Binding Path=ModifyLineCount}"></Label>
+                <Button Width="80" Command="{Binding StartCalculateDiffCommand}" Margin="5">计算变更</Button>
+                 <!--进度条value值为0~100-->
+                <ProgressBar Width="80" Margin="5" Value="{Binding Progress}" ></ProgressBar>
             </StackPanel>
             <ListView Grid.Row="1" 
                       Grid.Column="0"
