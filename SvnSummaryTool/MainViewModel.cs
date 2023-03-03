@@ -342,6 +342,36 @@ namespace SvnSummaryTool
             }
         }
 
+        /// <summary>
+        /// 关闭时保存配置
+        /// </summary>
+        [RelayCommand]
+        private void SaveConfig()
+        {
+            Settings.Default.svnDirSaved = new System.Collections.Specialized.StringCollection();
+            Settings.Default.svnDirSaved.AddRange(ProjectsPath.ToArray());
+            Settings.Default.Save();
+        }
+
+        /// <summary>
+        /// 关闭时保存配置
+        /// </summary>
+        [RelayCommand]
+        private void Load()
+        {
+            var svnDirSaved = Settings.Default.svnDirSaved;
+            if (svnDirSaved != null && svnDirSaved.Count != 0)
+            {
+                foreach (var dir in svnDirSaved)
+                {
+                    if (!string.IsNullOrEmpty(dir))
+                    {
+                        ProjectsPath.Add(dir);
+                    }
+                }
+            }
+        }
+
         partial void OnSelectedSvnLogInfoChanged(SvnLogInfo value) => CanRemoveSvnLogInfoEnalbe = value != null;
 
 

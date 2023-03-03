@@ -6,10 +6,22 @@
         xmlns:local="clr-namespace:SvnSummaryTool"
         xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
         mc:Ignorable="d"
-        Title="MainWindow" Height="550" Width="800">
+        Title="MultiSvnTools" Height="550" Width="800">
     <d:Window.DataContext>
         <local:MainViewModel></local:MainViewModel>
     </d:Window.DataContext>
+    <i:Interaction.Triggers>
+        <i:EventTrigger EventName="Loaded">
+            <i:InvokeCommandAction 
+                                Command="{Binding LoadCommand}"
+                                CommandParameter="{Binding Path=., RelativeSource={RelativeSource Mode=Self}}"></i:InvokeCommandAction>
+        </i:EventTrigger>
+        <i:EventTrigger EventName="Closing">
+            <i:InvokeCommandAction 
+                                Command="{Binding SaveConfigCommand}"
+                                CommandParameter="{Binding Path=., RelativeSource={RelativeSource Mode=Self}}"></i:InvokeCommandAction>
+        </i:EventTrigger>
+    </i:Interaction.Triggers>
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"></ColumnDefinition>
