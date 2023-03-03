@@ -104,10 +104,11 @@ namespace SvnSummaryTool
         {
             var localfilePath = await ConvertUrlToLocalFilePath(logFormat.LocalSvnDir, logFormat.fileName);
             // https://stackoverflow.com/questions/74100260/how-to-compare-files-between-two-svn-revisions-in-vs-code
-            // 两种都可以
-            // 1. svn diff --old CCP6600.cs@5817 --new CCP6600.cs@5818 --diff-cmd "C:\Program Files\Microsoft VS Code\Code.exe" - x "--wait --diff"
+            // 第二种方式有的有问题
+            // 1. svn diff --old CCP6600.cs@5817 --new CCP6600.cs@5818 --diff-cmd "C:\Program Files\Microsoft VS Code\Code.exe" -x "--wait --diff"
             // 2. svn diff -r 5818 CCP6600.cs --diff-cmd  Code -x "--wait --diff"
-            var cmd = $"svn diff -r {logFormat.version} {localfilePath} --diff-cmd Code -x \"--wait --diff\"";
+            var oldVersion = logFormat.version > 1 ? logFormat.version - 1 : 0;
+            var cmd = $"svn diff --old {localfilePath}@{oldVersion} --new {localfilePath}@{logFormat.version} --diff-cmd Code -x \"--wait --diff\"";
             await Util.ExecuteCommandAsync(cmd);
         }
 
