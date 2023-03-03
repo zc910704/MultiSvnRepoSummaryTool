@@ -256,22 +256,14 @@ namespace SvnSummaryTool
             var fileDialog = new OpenFileDialog();
             if (fileDialog.ShowDialog() == DialogResult.OK)
             {
-                if (!ProjectSvnLogInfo.Any(p => Path.Equals(p.LogPath, fileDialog.FileName)))
+                if (!ProjectSvnLogInfo.Any(p => Path.Equals(p.LogDir, fileDialog.FileName)))
                 {
                     var filename = fileDialog.FileName;
                     var fileInfo = new FileInfo(filename);
                     var dir = fileInfo.DirectoryName;
-                    // aaa.bbb.text
-                    var pureName = fileInfo.Name;
-                    var dotIndex = pureName.LastIndexOf('.');
-                    // 不包含文件类型.后的文件名
-                    var name = pureName.Substring(0, dotIndex);
-                    var svnDirFilePath = System.IO.Path.Combine(dir, $"{name}.path");
-                    var logFilePath = $"{name}.log";
-                    using (StreamReader sr = new StreamReader(svnDirFilePath))
-                    {
-                        var svnDir = sr.ReadToEnd();
-                        var svnInfo = SvnLogInfo.Create(dir, logFilePath, svnDir);
+                    var svnInfo = SvnLogInfo.Create(dir, fileInfo.Name, null);
+                    if (svnInfo != null && ProjectSvnLogInfo.All(p => !Path.Equals(p.SvnDir, svnInfo.SvnDir)))
+                    {                        
                         ProjectSvnLogInfo.Add(svnInfo);
                     }
                 }
