@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,6 +18,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.Logging;
+using SvnSummaryTool.Model;
 using static System.Windows.Forms.DataFormats;
 
 namespace SvnSummaryTool
@@ -101,6 +103,15 @@ namespace SvnSummaryTool
         /// </summary>
         [ObservableProperty]
         private int _Progress = 0;
+        /// <summary>
+        /// 调试模式
+        /// </summary>
+        [ObservableProperty]
+# if DEBUG
+        private bool _DebugMode = true;
+#else
+        private bool _DebugMode = false;
+#endif
         /// <summary>
         /// 当前修改总行数
         /// </summary>
@@ -452,6 +463,16 @@ namespace SvnSummaryTool
                    filePath.EndsWith(".Designer.cs") ||
                    filePath.EndsWith(".resx") ||
                    filePath.EndsWith(".ico");
+        }
+
+        /// <summary>
+        /// 测试
+        /// </summary>
+        /// <returns></returns>
+        [RelayCommand]
+        private async Task TestAsync()
+        {
+            var re = await SvnTools.GetSvnInfo(SelectedProjectPath);   
         }
     }
 

@@ -47,7 +47,7 @@ namespace SvnSummaryTool
                     return new SvnLogInfo { LogPath = logDir, Log = log, Start = start, End = end,SvnDir = svnDir };
                 }
             }
-            catch (Exception)
+            catch (Exception e)
             {
 
             }

@@ -1,0 +1,6 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ct="clr-namespace:SvnSummaryTool.Resource.Converter">
+    <!--转换器-->
+    <ct:VisibilityConverter x:Key="VisibilityConverter"></ct:VisibilityConverter>
+</ResourceDictionary>

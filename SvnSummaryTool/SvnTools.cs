@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SvnSummaryTool.Model;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,6 +34,18 @@ namespace SvnSummaryTool
             var cmd = $"svn log -v --xml -r {{\"{startTime}\"}}:{{\"{endTime}\"}} {dirPath} > {logPath}\\{fileName}";
             var logResult = await Util.ExecuteCommandAsync(cmd);
             return !logResult.Contains("E200007") ? true : false;
+        }
+
+        public static async Task DownloadFile(string file, string reversion)
+        { 
+        
+        }
+
+        public static async Task<SVNInfo> GetSvnInfo(string dir)
+        {
+            var cmd = $"svn info --xml {dir}";
+            var info = await Util.ExecuteCommandAsync(cmd);            
+            return SVNInfo.Create(info);
         }
 
         /// <summary>
