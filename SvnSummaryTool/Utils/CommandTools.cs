@@ -6,9 +6,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SvnSummaryTool
+namespace SvnSummaryTool.Utils
 {
-    public static class Util
+    public static class CommandTools
     {
         /// <summary>
         /// 执行CMD命令，并返回结果
@@ -75,11 +75,6 @@ namespace SvnSummaryTool
             process.BeginOutputReadLine();
 
             return await taskCompletionSource.Task;
-        }
-
-        public static string GetConfig(string key)
-        {
-            return ConfigurationManager.AppSettings.Get(key);
         }
     }
 }

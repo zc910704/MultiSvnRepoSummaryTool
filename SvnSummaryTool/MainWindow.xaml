@@ -125,6 +125,9 @@
                 <Button Width="80" Command="{Binding StartCalculateDiffCommand}" Margin="5">计算变更</Button>
                 <!--进度条value值为0~100-->
                 <ProgressBar Width="80" Margin="5" Value="{Binding Progress}" Visibility="{Binding Path=StartCalculateDiffCommand.IsRunning, Converter={StaticResource VisibilityConverter}}" ></ProgressBar>
+                <Button Width="80" Command="{Binding DownloadDiffCommand}" Margin="5">缓存变革</Button>
+                <Button Width="80" Command="{Binding ClearLocalCacheCommand}" Margin="5">清空缓存</Button>
+                <ProgressBar Width="80" Margin="5" Value="{Binding Progress}" Visibility="{Binding Path=DownloadDiffCommand.IsRunning, Converter={StaticResource VisibilityConverter}}" ></ProgressBar>
                 <Button Width="80" Command="{Binding Path=TestCommand}" Margin="5" Visibility="{Binding Path=DebugMode, Converter={StaticResource VisibilityConverter}}">测试</Button>
             </StackPanel>
             <ListView Grid.Row="1" 
@@ -167,10 +170,18 @@
                 SelectedItem="{Binding Path=SelectedLogFormat, Mode=TwoWay}"
                 ItemsSource="{Binding DataTableSourece}">
                 <DataGrid.Columns>
+                    <DataGridCheckBoxColumn
+                            Width="auto">
+                        <DataGridCheckBoxColumn.HeaderTemplate>
+                            <DataTemplate>
+                                <CheckBox>全选</CheckBox>
+                            </DataTemplate>
+                        </DataGridCheckBoxColumn.HeaderTemplate>
+                    </DataGridCheckBoxColumn>
                     <DataGridTextColumn 
                             Binding="{Binding Path=version}"
-                            Header="Reversion"
-                            Width="80">
+                            Header="版本"
+                            Width="60">
                     </DataGridTextColumn>
                     <DataGridTextColumn 
                             Binding="{Binding Path=checkTime}"
@@ -180,7 +191,7 @@
                     <DataGridTextColumn
                             Binding="{Binding Path=author}"
                             Header="作者"
-                            Width="100">
+                            Width="auto">
                     </DataGridTextColumn>
                     <DataGridTextColumn 
                             Binding="{Binding Path=fileName}"

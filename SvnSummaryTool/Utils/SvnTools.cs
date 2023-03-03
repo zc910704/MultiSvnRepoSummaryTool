@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using System.Web;
 using System.Xml;
 
-namespace SvnSummaryTool
+namespace SvnSummaryTool.Utils
 {
     public static class SvnTools
     {
@@ -17,7 +17,7 @@ namespace SvnSummaryTool
         /// 映射svn本地仓库地址的路径到相对repo的路径
         /// e.g. /branches/2.10.0.0
         /// </summary>
-        private static ConcurrentDictionary<string , string> _svnDirToUrlDictCache = new ConcurrentDictionary<string, string> ();
+        private static ConcurrentDictionary<string, string> _svnDirToUrlDictCache = new ConcurrentDictionary<string, string>();
         /// <summary>
         /// 下载Log文件
         /// </summary>
@@ -32,19 +32,19 @@ namespace SvnSummaryTool
             var startTime = from.ToString("yyyy-MM-dd");
             var endTime = to.AddDays(1).ToString("yyyy-MM-dd");
             var cmd = $"svn log -v --xml -r {{\"{startTime}\"}}:{{\"{endTime}\"}} {dirPath} > {logPath}\\{fileName}";
-            var logResult = await Util.ExecuteCommandAsync(cmd);
+            var logResult = await CommandTools.ExecuteCommandAsync(cmd);
             return !logResult.Contains("E200007") ? true : false;
         }
 
         public static async Task DownloadFile(string file, string reversion)
-        { 
-        
+        {
+
         }
 
         public static async Task<SVNInfo> GetSvnInfo(string dir)
         {
             var cmd = $"svn info --xml {dir}";
-            var info = await Util.ExecuteCommandAsync(cmd);            
+            var info = await CommandTools.ExecuteCommandAsync(cmd);
             return SVNInfo.Create(info);
         }
 
@@ -62,7 +62,7 @@ namespace SvnSummaryTool
             else
             {
                 var cmd = $"svn info --xml {svnDir}";
-                var info = await Util.ExecuteCommandAsync(cmd);
+                var info = await CommandTools.ExecuteCommandAsync(cmd);
                 XmlDocument infoXML = new XmlDocument();
                 infoXML.LoadXml(info);
                 var root = infoXML.SelectSingleNode("info/entry/relative-url")!.InnerXml;
@@ -86,11 +86,11 @@ namespace SvnSummaryTool
             // 是否到达变更区域
             var reachLineChange = false;
             //svn diff 命令返回的解释 https://blog.csdn.net/weiwangchao_/article/details/19117191
-            string diffBuffer = await SvnTools.CallSvnDiff(fileName, localSvnDir, revision);
+            string diffBuffer = await CallSvnDiff(fileName, localSvnDir, revision);
             var lines = diffBuffer.Split(new string[] { "\r\n" }, StringSplitOptions.None).ToList();
             foreach (var line in lines)
             {
-                if(line.Trim().StartsWith("@"))
+                if (line.Trim().StartsWith("@"))
                 {
                     reachLineChange = true;
                 }
@@ -104,7 +104,7 @@ namespace SvnSummaryTool
                     {
                         removeLines++;
                     }
-                }               
+                }
             }
             return new LineChange(appendLines, removeLines);
         }
@@ -122,7 +122,7 @@ namespace SvnSummaryTool
             // 2. svn diff -r 5818 CCP6600.cs --diff-cmd  Code -x "--wait --diff"
             var oldVersion = logFormat.version > 1 ? logFormat.version - 1 : 0;
             var cmd = $"svn diff --old {localfilePath}@{oldVersion} --new {localfilePath}@{logFormat.version} --diff-cmd Code -x \"--wait --diff\"";
-            await Util.ExecuteCommandAsync(cmd);
+            await CommandTools.ExecuteCommandAsync(cmd);
         }
 
 
@@ -139,7 +139,7 @@ namespace SvnSummaryTool
 
             var localfilePath = await ConvertUrlToLocalFilePath(localSvnDir, urlFileName);
             var cmd = $"svn diff --old {localfilePath}@{revision - 1} --new {localfilePath}@{revision}";
-            var fileDiff = await Util.ExecuteCommandAsync(cmd);
+            var fileDiff = await CommandTools.ExecuteCommandAsync(cmd);
             return fileDiff;
         }
 
@@ -151,7 +151,7 @@ namespace SvnSummaryTool
         {
             localSvnDir = localSvnDir.Trim().Replace("\r\n", "");
             // 获取svn库check的相对根地址，用来替换文件目录 e.g. /branches/2.10.0.0
-            var rootUrl = await SvnTools.GetSvnRoot(localSvnDir);
+            var rootUrl = await GetSvnRoot(localSvnDir);
             // /Code/Demo.cs
             var localfileName = urlFileName.Substring(urlFileName.IndexOf(rootUrl) + rootUrl.Length);
             if (!localfileName.StartsWith("/"))

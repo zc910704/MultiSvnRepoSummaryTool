@@ -19,14 +19,15 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.Logging;
 using SvnSummaryTool.Model;
+using SvnSummaryTool.Utils;
 using static System.Windows.Forms.DataFormats;
 
 namespace SvnSummaryTool
 {
     internal partial class MainViewModel : ObservableObject
     {
-        private static string[] _ignoreFile = Util.GetConfig("IgnoreFile").Split(';').Where(s => !string.IsNullOrEmpty(s)).ToArray();
-        private static string[] _ignoreFolder = Util.GetConfig("IgnoreFolder").Split(';').Where(s => !string.IsNullOrEmpty(s)).ToArray();
+        private static string[] _ignoreFile = ConfigTools.GetConfig("IgnoreFile").Split(';').Where(s => !string.IsNullOrEmpty(s)).ToArray();
+        private static string[] _ignoreFolder = ConfigTools.GetConfig("IgnoreFolder").Split(';').Where(s => !string.IsNullOrEmpty(s)).ToArray();
 
         /// <summary>
         /// 选择的项目路径集合
@@ -318,6 +319,26 @@ namespace SvnSummaryTool
             });
             await DoCalculateDiffAsync(progress);
 
+        }
+
+        /// <summary>
+        /// 下载变更
+        /// </summary>
+        /// <returns></returns>
+        [RelayCommand]
+        private async Task DownloadDiffAsync()
+        { 
+        
+        }
+
+        /// <summary>
+        /// 清空本地缓存文件
+        /// </summary>
+        /// <returns></returns>
+        [RelayCommand]
+        private async Task ClearLocalCache()
+        { 
+        
         }
 
         private async Task DoCalculateDiffAsync(IProgress<int> progress)

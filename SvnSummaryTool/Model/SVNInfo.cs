@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
+using System.Web;
 using System.Xml;
 using System.Xml.Serialization;
 
@@ -17,7 +13,7 @@ namespace SvnSummaryTool.Model
         /// 信息内容
         /// </summary>
         [XmlElement( ElementName = "entry")]
-        public SVNInfo Value { get; set; }
+        public SVNInfo? Value { get; set; }
     }
 
     [XmlRoot(ElementName = "entry")]
@@ -27,7 +23,7 @@ namespace SvnSummaryTool.Model
         /// 提交版本号
         /// </summary>
         [XmlAttribute(AttributeName = "revision")]
-        public string Revision { get; set; }
+        public string? Revision { get; set; }
         /// <summary>
         /// 当前查询svn信息返回的类型
         /// </summary>
@@ -38,25 +34,30 @@ namespace SvnSummaryTool.Model
         /// e.g. http://127.0.0.1:80/svn/repo1/branches/2.10.0.0/src/Example
         /// </summary>
         [XmlElement(ElementName = "url")]
-        public string Url { get; set; }
+        public string? Url { get; set; }
         /// <summary>
         /// 当前相对库根目录的路径,注意以^开头 <br/>
-        /// e.g. ^branches/2.10.0.0/src/Example
+        /// e.g. ^/branches/2.10.0.0/src/Example
         /// </summary>
         [XmlElement(ElementName = "relative-url")]
-        public string RelativeUrl { get; set; }
+        public string? DecorateDRelativeUrl { get; set; }
+        /// <summary>
+        /// 当前相对库根目录的路径 <br/>
+        /// /branches/2.10.0.0/src/Example
+        /// </summary>
+        public string? RelativeUrl => HttpUtility.UrlDecode(DecorateDRelativeUrl)?.Substring(1);
         /// <summary>
         /// 当前库信息
         /// </summary>
         [XmlElement(ElementName = "repository")]
-        public Repository Repository { get; set; }
+        public Repository? Repository { get; set; }
 
         /// <summary>
         /// 读取实例
         /// </summary>
         /// <param name="svnInfo"></param>
         /// <returns></returns>
-        public static SVNInfo Create(string svnInfo)
+        public static SVNInfo? Create(string svnInfo)
         {
             try
             {
