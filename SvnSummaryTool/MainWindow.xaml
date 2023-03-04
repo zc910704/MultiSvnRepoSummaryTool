@@ -125,10 +125,9 @@
                 <Label Width="80" Content="{Binding Path=ModifyLineCount}"></Label>
                 <Button Width="80" Command="{Binding StartCalculateDiffCommand}" Margin="5">计算变更</Button>
                 <!--进度条value值为0~100-->
-                <ProgressBar Width="80" Margin="5" Value="{Binding Progress}" Visibility="{Binding Path=StartCalculateDiffCommand.IsRunning, Converter={StaticResource VisibilityConverter}}" ></ProgressBar>
                 <Button Width="80" Command="{Binding DownloadDiffCommand}" Margin="5">缓存变更</Button>
                 <Button Width="80" Command="{Binding ClearLocalCacheCommand}" Margin="5">清空缓存</Button>
-                <ProgressBar Width="80" Margin="5" Value="{Binding Progress}" Visibility="{Binding Path=DownloadDiffCommand.IsRunning, Converter={StaticResource VisibilityConverter}}" ></ProgressBar>
+                <ProgressBar Width="80" Margin="5" Value="{Binding Progress}" Visibility="{Binding Path=StartCalculateDiffCommand.IsRunning, Converter={StaticResource VisibilityConverter}}" ></ProgressBar>
                 <Button Width="80" Command="{Binding Path=TestCommand}" Margin="5" Visibility="{Binding Path=DebugMode, Converter={StaticResource VisibilityConverter}}">测试</Button>
             </StackPanel>
             <ListView Grid.Row="1" 
@@ -171,59 +170,83 @@
                 ItemsSource="{Binding DataTableSourece}">
                 <DataGrid.Columns>
                     <DataGridCheckBoxColumn
-                            IsReadOnly="False"
-                            Width="auto">
+                        IsReadOnly="False"
+                        Binding="{Binding Path=IsNeedCache}"
+                        Width="auto">
                         <DataGridCheckBoxColumn.HeaderTemplate>
                             <DataTemplate>
-                                <CheckBox>全选</CheckBox>
+                                <CheckBox Content="缓存">
+                                    <i:Interaction.Triggers>
+                                        <i:EventTrigger EventName="Checked">
+                                            <i:InvokeCommandAction 
+                                                Command="{Binding  Path=DataContext.ToggleSelectedAllLogForCacheCommand, ElementName=datagrid}">
+                                            </i:InvokeCommandAction>
+                                        </i:EventTrigger>
+                                        <i:EventTrigger EventName="Unchecked">
+                                            <i:InvokeCommandAction 
+                                                Command="{Binding Path=DataContext.ToggleSelectedAllLogForCacheCommand, ElementName=datagrid}">
+                                            </i:InvokeCommandAction>
+                                        </i:EventTrigger>
+                                    </i:Interaction.Triggers>
+                                </CheckBox>
                             </DataTemplate>
                         </DataGridCheckBoxColumn.HeaderTemplate>
                     </DataGridCheckBoxColumn>
                     <DataGridTextColumn 
-                            Binding="{Binding Path=version}"
-                            Header="版本"
-                            Width="auto">
-                    </DataGridTextColumn>
-                    <DataGridTextColumn 
-                            Binding="{Binding Path=checkTime}"
-                            Header="提交时间"
-                            Width="auto">
+                         IsReadOnly="True"
+                         Binding="{Binding Path=Revision}"
+                         Header="版本"
+                         Width="auto">
                     </DataGridTextColumn>
                     <DataGridTextColumn
-                            Binding="{Binding Path=author}"
-                            Header="作者"
-                            Width="auto">
+                        IsReadOnly="True"
+                        Binding="{Binding Path=CheckTime}"
+                        Header="提交时间"
+                        Width="auto">
                     </DataGridTextColumn>
-                    <DataGridTextColumn 
-                            Binding="{Binding Path=fileName}"
-                            Header="文件名"
-                            Width="auto">
+                    <DataGridTextColumn
+                        IsReadOnly="True"
+                        Binding="{Binding Path=Author}"
+                        Header="作者"
+                        Width="auto">
                     </DataGridTextColumn>
-                    <DataGridTextColumn 
-                            Binding="{Binding Path=appendLines}"
-                            Header="增加行数"
-                            Width="60">
+                    <DataGridTextColumn
+                        IsReadOnly="True"
+                        Binding="{Binding Path=FileName}"
+                        Header="文件名"
+                        Width="auto">
                     </DataGridTextColumn>
-                    <DataGridTextColumn 
-                            Binding="{Binding Path=removeLines}"
-                            Header="删除行数"
-                            Width="60">
+                    <DataGridTextColumn
+                        IsReadOnly="True"
+                        Binding="{Binding Path=AppendLines}"
+                        Header="增加行数"
+                        Width="60">
                     </DataGridTextColumn>
-                    <DataGridTextColumn 
-                            Binding="{Binding Path=totalLines}"
-                            Header="总行数"
-                            Width="60">
+                    <DataGridTextColumn
+                        IsReadOnly="True"
+                        Binding="{Binding Path=RemoveLines}"
+                        Header="删除行数"
+                        Width="60">
                     </DataGridTextColumn>
-                    <DataGridTextColumn 
-                            Binding="{Binding Path=msg}"
-                            Header="提交信息"
-                            Width="*">
+                    <DataGridTextColumn
+                        IsReadOnly="True"
+                        Binding="{Binding Path=TotalLines}"
+                        Header="总行数"
+                        Width="60">
                     </DataGridTextColumn>
-                    <DataGridTemplateColumn Header="使用VsCode"
-                                            Width="80">
+                    <DataGridTextColumn
+                        IsReadOnly="True"
+                        Binding="{Binding Path=Msg}"
+                        Header="提交信息"
+                        Width="*">
+                    </DataGridTextColumn>
+                    <DataGridTemplateColumn
+                        IsReadOnly="True"
+                        Header="使用VsCode"
+                        Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Button Command="{Binding ElementName=datagrid, Path=DataContext.ShowDiffInVsCodeCommand}">查看</Button>
+                                <Button Command="{Binding ElementName=datagrid, Path=DataContext.ShowDiffInVsCodeCommand}" Background="CadetBlue">查看</Button>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

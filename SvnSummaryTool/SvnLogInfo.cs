@@ -1,8 +1,11 @@
 ﻿using Microsoft.VisualBasic.Logging;
+using SvnSummaryTool.Model;
+using SvnSummaryTool.Utils;
 using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 
 namespace SvnSummaryTool
@@ -13,20 +16,20 @@ namespace SvnSummaryTool
         /// 日志保存目录 <br/>
         /// D:\SVNLog\
         /// </summary>
-        public string LogDir { get; set; }
+        public string? LogDir { get; set; }
         /// <summary>
         /// 日志文件名<br/>
         /// repo1.log
         /// </summary>
-        public string LogFileName { get; set; }
-        /// <summary>
-        /// 本地check的SVN文件夹地址
-        /// </summary>
-        public string SvnDir { get; set; }
+        public string? LogFileName { get; set; }
         /// <summary>
         /// 日志
         /// </summary>
-        public Log Log { get; set; }
+        public Log? Log { get; set; }
+        /// <summary>
+        /// svn库信息
+        /// </summary>
+        public SVNInfo? SvnInfo { get; set; }
         /// <summary>
         /// 起始时间
         /// </summary>
@@ -40,43 +43,43 @@ namespace SvnSummaryTool
         /// 将XML格式的Log文件读取为对象
         /// </summary>
         /// <param name="logDir"></param>
-        /// <param name="fileName"></param>
+        /// <param name="filePath"></param>
         /// <param name="svnDir"></param>
         /// <returns></returns>
-        public static SvnLogInfo Create(string logDir, string fileName, string svnDir)
+        public static SvnLogInfo Create(string logDir, string filePath, SVNInfo? svnInfo = null)
         {
             try
             {
-                // aaa.bbb.text
-                var pureName = fileName;
-                var dotIndex = pureName.LastIndexOf('.');
-                // 不包含文件类型.后的文件名
-                var name = pureName.Substring(0, dotIndex);
-                var svnDirFilePath = System.IO.Path.Combine(logDir, $"{name}.path");
-                var logfileName = $"{name}.log";
+                var filenameWithDir = Path.GetFileName(filePath);
+                var logfileName = Path.ChangeExtension(filePath, "log");
+                Log? log = null;
 
-                if (string.IsNullOrEmpty(svnDir))
+                if (svnInfo == null)
                 {
-                    using (StreamReader sr = new StreamReader(svnDirFilePath))
-                    {
-                        svnDir = sr.ReadToEnd();
-                    }
+                    var svnInfoXml = File.ReadAllText(Path.Combine(logDir, Path.ChangeExtension(filePath, "svnInfo")));
+                    svnInfo = SvnInfoResponse.Create(svnInfoXml)?.Value;
                 }
 
-                XmlSerializer serializer = new XmlSerializer(typeof(Log));
-                using (TextReader reader = new StringReader(File.ReadAllText($"{logDir}\\{logfileName}")))
+                var logXml = File.ReadAllText($"{logDir}\\{logfileName}");
+                log = Log.Create(logXml);
+                var end = log.Logentry.Max(lg => lg.Date.Value);
+                var start = log.Logentry.Min(lg => lg.Date.Value);
+
+                return new SvnLogInfo 
                 {
-                    var log = (Log)serializer.Deserialize(reader);
-                    var end = log.Logentry.Max(lg => lg.Date.Value);
-                    var start = log.Logentry.Min(lg => lg.Date.Value);
-                    return new SvnLogInfo { LogDir = logDir, Log = log, Start = start, End = end, SvnDir = svnDir, LogFileName = logfileName };
-                }
+                    LogDir = logDir,
+                    Log = log,
+                    Start = start,
+                    End = end,
+                    SvnInfo = svnInfo,
+                    LogFileName = logfileName 
+                };
             }
             catch (Exception e)
             {
 
             }
-            return null;
+            return new SvnLogInfo();
         }
     }
 }

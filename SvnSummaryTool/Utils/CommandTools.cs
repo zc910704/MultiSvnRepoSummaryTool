@@ -56,7 +56,7 @@ namespace SvnSummaryTool.Utils
             // https://learn.microsoft.com/zh-cn/dotnet/api/system.threading.tasks.taskcompletionsource.trysetresult?view=net-7.0
             var taskCompletionSource = new TaskCompletionSource<string>();
             var strbuild = new StringBuilder();
-            //定义内部函数
+            //定义回调
             void outputHandler(object sender, DataReceivedEventArgs args)
             {
                 if (args.Data != null)

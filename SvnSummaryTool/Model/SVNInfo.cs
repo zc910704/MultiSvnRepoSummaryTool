@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.IO;
 using System.Web;
 using System.Xml;
@@ -7,13 +8,56 @@ using System.Xml.Serialization;
 namespace SvnSummaryTool.Model
 {
     [XmlRoot(ElementName = "info")]
-    public class Info
+    public class SvnInfoResponse
     {
         /// <summary>
         /// 信息内容
         /// </summary>
         [XmlElement( ElementName = "entry")]
         public SVNInfo? Value { get; set; }
+
+        /// <summary>
+        /// 读取实例
+        /// </summary>
+        /// <param name="svnInfo"></param>
+        /// <returns></returns>
+        public static SvnInfoResponse? Create(string svnInfoXml)
+        {
+            try
+            {
+                XmlSerializer serializer = new XmlSerializer(typeof(SvnInfoResponse));
+                using (var reader = new StringReader(svnInfoXml))
+                {
+                    var info = (SvnInfoResponse)serializer.Deserialize(reader);
+                    return info;
+                }
+            }
+            catch (Exception e)
+            {
+
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 序列化自身保存到指定文件
+        /// </summary>
+        /// <param name="targetFilePath"></param>
+        public void Save(string targetFilePath)
+        {
+            try
+            {
+                XmlSerializer serializer = new XmlSerializer(typeof(SvnInfoResponse));
+                using (TextWriter writer = new StreamWriter(targetFilePath))
+                {
+                    serializer.Serialize(writer, this);
+                    writer.Flush();
+                }
+            }
+            catch (Exception e)
+            { 
+            }            
+        }
     }
 
     [XmlRoot(ElementName = "entry")]
@@ -51,30 +95,11 @@ namespace SvnSummaryTool.Model
         /// </summary>
         [XmlElement(ElementName = "repository")]
         public Repository? Repository { get; set; }
-
         /// <summary>
-        /// 读取实例
+        /// 本地svn信息
         /// </summary>
-        /// <param name="svnInfo"></param>
-        /// <returns></returns>
-        public static SVNInfo? Create(string svnInfo)
-        {
-            try
-            {
-                XmlSerializer serializer = new XmlSerializer(typeof(Info));
-                using (var reader = new StringReader(svnInfo))
-                { 
-                    var info = (Info)serializer.Deserialize(reader);
-                    return info?.Value;
-                }
-                
-            }
-            catch (Exception e)
-            {
-
-            }
-            return null;
-        }
+        [XmlElement(ElementName = "wc-info")]
+        public WorkCopyInfo WorkCopyInfo { get; set; }
     }
 
     [XmlRoot(ElementName = "repository")]
@@ -91,6 +116,17 @@ namespace SvnSummaryTool.Model
         /// </summary>
         [XmlElement(ElementName = "uuid")]
         public string UUID { get; set; }
+    }
+
+    [XmlRoot(ElementName = "wc-info")]
+    public class WorkCopyInfo 
+    {
+        /// <summary>
+        /// 工作拷贝的绝对目录根地址 <br/>
+        /// e.g. D:/Desktop/svn/demoRepo
+        /// </summary>
+        [XmlElement("wcroot-abspath")]
+        public string RootPath { get; set; }
     }
 
     public enum SVNType 

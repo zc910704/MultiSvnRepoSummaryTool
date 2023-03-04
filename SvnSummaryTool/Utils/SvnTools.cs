@@ -2,22 +2,20 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
+using System.Windows;
 using System.Xml;
 
 namespace SvnSummaryTool.Utils
 {
     public static class SvnTools
     {
-        /// <summary>
-        /// 映射svn本地仓库地址的路径到相对repo的路径
-        /// e.g. /branches/2.10.0.0
-        /// </summary>
-        private static ConcurrentDictionary<string, string> _svnDirToUrlDictCache = new ConcurrentDictionary<string, string>();
         /// <summary>
         /// 下载Log文件
         /// </summary>
@@ -35,17 +33,40 @@ namespace SvnSummaryTool.Utils
             var logResult = await CommandTools.ExecuteCommandAsync(cmd);
             return !logResult.Contains("E200007") ? true : false;
         }
-
-        public static async Task DownloadFile(string file, string reversion)
+        /// <summary>
+        /// 获取指定url文件内容保存到本地
+        /// </summary>
+        /// <param name="fileUrl">文件的完整url路径</param>
+        /// <param name="saveDir">保存目录</param>
+        /// <param name="revision">版本</param>
+        /// <returns></returns>
+        public static async Task DownloadFile(string fileUrl, string saveDir, int revision)
         {
+            var fileName = Path.GetFileName(fileUrl);
+            var extension = Path.GetExtension(fileUrl);
+            // 使用md5作为路径唯一编码
+            var md5 = GetStrMd5(fileUrl);
+            var saveFileName = Path.ChangeExtension(fileName, $".{md5}.r{revision}{extension}");
+            var saveFilePath = Path.Combine(saveDir, saveFileName);
 
+            if (!File.Exists(saveFilePath))
+            {
+                var cmd = $"svn export {fileUrl}@{revision} {saveFilePath}";
+                var response = await CommandTools.ExecuteCommandAsync(cmd);
+                // svn: E170000: URL 'http://home/svn/Demo/trunk/Folder1/a.cs' doesn't exist
+                // 文件不存在就写空
+                if (response.Contains("E170000"))
+                {
+                    
+                }
+            }
         }
 
-        public static async Task<SVNInfo> GetSvnInfo(string dir)
+        public static async Task<SvnInfoResponse> GetSvnInfo(string svnDir)
         {
-            var cmd = $"svn info --xml {dir}";
-            var info = await CommandTools.ExecuteCommandAsync(cmd);
-            return SVNInfo.Create(info);
+            var cmd = $"svn info --xml {svnDir}";
+            var infoXml = await CommandTools.ExecuteCommandAsync(cmd);
+            return SvnInfoResponse.Create(infoXml);
         }
 
         /// <summary>
@@ -55,22 +76,14 @@ namespace SvnSummaryTool.Utils
         /// <returns></returns>
         public static async Task<string> GetSvnRoot(string svnDir)
         {
-            if (_svnDirToUrlDictCache.ContainsKey(svnDir))
-            {
-                return _svnDirToUrlDictCache[svnDir];
-            }
-            else
-            {
-                var cmd = $"svn info --xml {svnDir}";
-                var info = await CommandTools.ExecuteCommandAsync(cmd);
-                XmlDocument infoXML = new XmlDocument();
-                infoXML.LoadXml(info);
-                var root = infoXML.SelectSingleNode("info/entry/relative-url")!.InnerXml;
-                // ^/branches/2.10.0.0 去掉最开始的^开始符号
-                var rootUrl = HttpUtility.UrlDecode(root).Substring(1);
-                _svnDirToUrlDictCache[svnDir] = rootUrl;
-                return rootUrl;
-            }
+            var cmd = $"svn info --xml {svnDir}";
+            var info = await CommandTools.ExecuteCommandAsync(cmd);
+            XmlDocument infoXML = new XmlDocument();
+            infoXML.LoadXml(info);
+            var root = infoXML.SelectSingleNode("info/entry/relative-url")!.InnerXml;
+            // ^/branches/2.10.0.0 去掉最开始的^开始符号
+            var rootUrl = HttpUtility.UrlDecode(root).Substring(1);
+            return rootUrl;
         }
 
         /// <summary>
@@ -79,10 +92,11 @@ namespace SvnSummaryTool.Utils
         /// <param name="fileName"></param>
         /// <param name="revision"></param>
         /// <param name="localSvnDir"></param>
-        public static async Task<LineChange> GetLineDiff(string fileName, string localSvnDir, int revision)
+        public static async Task<LineChange> GetLineDiff(string fileName,SVNInfo svnInfo, int revision, DiffCheckMode diffCheckMode)
         {
             var appendLines = 0;
             var removeLines = 0;
+            var localSvnDir = svnInfo.WorkCopyInfo.RootPath;
             // 是否到达变更区域
             var reachLineChange = false;
             //svn diff 命令返回的解释 https://blog.csdn.net/weiwangchao_/article/details/19117191
@@ -115,13 +129,13 @@ namespace SvnSummaryTool.Utils
         /// <returns></returns>
         public static async Task ShowDiffInVscode(LogFormat logFormat)
         {
-            var localfilePath = await ConvertUrlToLocalFilePath(logFormat.LocalSvnDir, logFormat.fileName);
+            var localfilePath = await ConvertUrlToLocalFilePath(logFormat.SvnInfo.WorkCopyInfo.RootPath, logFormat.FileUrlPath);
             // https://stackoverflow.com/questions/74100260/how-to-compare-files-between-two-svn-revisions-in-vs-code
             // 第二种方式有的有问题
             // 1. svn diff --old CCP6600.cs@5817 --new CCP6600.cs@5818 --diff-cmd "C:\Program Files\Microsoft VS Code\Code.exe" -x "--wait --diff"
             // 2. svn diff -r 5818 CCP6600.cs --diff-cmd  Code -x "--wait --diff"
-            var oldVersion = logFormat.version > 1 ? logFormat.version - 1 : 0;
-            var cmd = $"svn diff --old {localfilePath}@{oldVersion} --new {localfilePath}@{logFormat.version} --diff-cmd Code -x \"--wait --diff\"";
+            var oldVersion = logFormat.Revision > 1 ? logFormat.Revision - 1 : 0;
+            var cmd = $"svn diff --old {localfilePath}@{oldVersion} --new {localfilePath}@{logFormat.Revision} --diff-cmd Code -x \"--wait --diff\"";
             await CommandTools.ExecuteCommandAsync(cmd);
         }
 
@@ -163,6 +177,12 @@ namespace SvnSummaryTool.Utils
 
             return $"{localSvnDir}{localfileName}";
         }
+
+        private static string GetStrMd5(string str)
+        { 
+            MD5 md5 = MD5.Create();
+            return BitConverter.ToString(md5.ComputeHash(UTF8Encoding.UTF8.GetBytes(str))).Replace("-", "");
+        }
     }
 
     /// <summary>
@@ -188,5 +208,24 @@ namespace SvnSummaryTool.Utils
             AppendLine = append;
             RemoveLine = remove;
         }
+    }
+
+    /// <summary>
+    /// svn文件版本差异检查模式
+    /// </summary>
+    public enum DiffCheckMode
+    {
+        /// <summary>
+        /// 本地文件
+        /// </summary>
+        LocalFile,
+        /// <summary>
+        /// 远程url
+        /// </summary>
+        Remote,
+        /// <summary>
+        /// 本地缓存
+        /// </summary>
+        Cached
     }
 }

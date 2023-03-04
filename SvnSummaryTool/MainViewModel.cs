@@ -1,26 +1,16 @@
-﻿using System;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using SvnSummaryTool.Model;
+using SvnSummaryTool.Utils;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web;
 using System.Windows.Forms;
-using System.Windows.Shapes;
-using System.Xml;
-using System.Xml.Serialization;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using Microsoft.VisualBasic;
-using Microsoft.VisualBasic.Logging;
-using SvnSummaryTool.Model;
-using SvnSummaryTool.Utils;
-using static System.Windows.Forms.DataFormats;
 
 namespace SvnSummaryTool
 {
@@ -123,43 +113,6 @@ namespace SvnSummaryTool
         private ConcurrentBag<LogFormat> _LogFormats = new ConcurrentBag<LogFormat>();
 
         /// <summary>
-        /// 作者选择状态变更
-        /// </summary>
-        [RelayCommand]
-        private void AuthorCheckedChanged()
-        {
-            var selectedAuthors = Authors
-                .Where(a => a.IsChecked)
-                .Select(a => a.Item).ToList();
-            var selectedUserLog = _LogFormats
-                .Where(log => selectedAuthors.Contains(log.author));
-
-            if (selectedUserLog != null && selectedUserLog.Any())
-            {
-                AppendLineCount = selectedUserLog
-                    .Select(s => s.appendLines)
-                    .Aggregate((l1, l2) => l1 + l2);
-
-                DeleteLineCount = selectedUserLog
-                    .Select(s => s.removeLines)
-                    .Aggregate((l1, l2) => l1 + l2);
-                DataTableSourece.Clear();
-                foreach (var item in selectedUserLog
-                    .OrderBy(x => x.checkTime)
-                    .ThenBy(x => x.author))
-                {
-                    DataTableSourece.Add(item);
-                }
-            }
-            else
-            {
-                AppendLineCount = 0;
-                DeleteLineCount = 0;
-                DataTableSourece.Clear();
-            }
-        }
-
-        /// <summary>
         /// 添加已经下载好的svn日志记录
         /// </summary>
         [RelayCommand]
@@ -217,16 +170,13 @@ namespace SvnSummaryTool
                     MessageBox.Show("请输入正确的项目地址", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
-                // 用来保存本地check的目录的文件名
-                string originSvnDirSaveName = $"{svnDir.Split('\\').ToList().LastOrDefault()}.path";
-                // 需要把本地check的目录svnDir保存下来，这样才能知道日志对应的目录在哪里
-                using (TextWriter writer = new StreamWriter(@$"{logSaveDir}\{originSvnDirSaveName}"))
-                {
-                    writer.WriteLine(svnDir);
-                    writer.Flush();
-                }
+                // 用来保存svn信息的文件名
+                string svnInfoFilename = $"{svnDir.Split('\\').ToList().LastOrDefault()}.svnInfo";
+                var svnInfoResponse = await SvnTools.GetSvnInfo(svnDir);
+                // 需要把svn的信息保存下来
+                svnInfoResponse.Save(@$"{logSaveDir}\{svnInfoFilename}");
                 // 读取log文件
-                var log = SvnLogInfo.Create(logSaveDir, logFileName, svnDir);
+                var log = SvnLogInfo.Create(logSaveDir, logFileName, svnInfoResponse.Value);
                 if (log != null)
                 {
                     ProjectSvnLogInfo.Add(log);
@@ -256,13 +206,13 @@ namespace SvnSummaryTool
             var fileDialog = new OpenFileDialog();
             if (fileDialog.ShowDialog() == DialogResult.OK)
             {
-                if (!ProjectSvnLogInfo.Any(p => Path.Equals(p.LogDir, fileDialog.FileName)))
+                if (!ProjectSvnLogInfo.Any(p => PathChanged.Equals(p.LogDir, fileDialog.FileName)))
                 {
                     var filename = fileDialog.FileName;
                     var fileInfo = new FileInfo(filename);
                     var dir = fileInfo.DirectoryName;
-                    var svnInfo = SvnLogInfo.Create(dir, fileInfo.Name, null);
-                    if (svnInfo != null && ProjectSvnLogInfo.All(p => !Path.Equals(p.SvnDir, svnInfo.SvnDir)))
+                    SvnLogInfo? svnInfo = SvnLogInfo.Create(dir, fileInfo.Name, null);
+                    if (svnInfo != null && ProjectSvnLogInfo.All(p => p.SvnInfo?.Url != svnInfo.SvnInfo?.Url))
                     {                        
                         ProjectSvnLogInfo.Add(svnInfo);
                     }
@@ -282,12 +232,12 @@ namespace SvnSummaryTool
 
             // 获取所有提交的集合
             var logEntrywithInfo = new List<Tuple<SvnLogInfo, Logentry>>();
-            foreach (var svnInfo in ProjectSvnLogInfo)
+            foreach (var svnlogInfo in ProjectSvnLogInfo)
             {
-                foreach (var entry in svnInfo.Log.Logentry)
+                foreach (var entry in svnlogInfo.Log!.Logentry)
                 {
                     // 格式化Log对象
-                    var current = ConvertLogEntry(svnInfo.SvnDir, entry);
+                    var current = ConvertLogEntry(svnlogInfo.SvnInfo, entry);
                     foreach (var c in current)
                     {
                         _LogFormats.Add(c);
@@ -295,7 +245,7 @@ namespace SvnSummaryTool
                 }                
             }
 
-            foreach (var author in _LogFormats.Select(f => f.author).Distinct())
+            foreach (var author in _LogFormats.Select(f => f.Author).Distinct())
             {
                 Authors.Add(new CanCheckedItem<string>(author));
             }
@@ -312,15 +262,52 @@ namespace SvnSummaryTool
             await DoCalculateDiffAsync(progress);
 
         }
-
+        /// <summary>
+        /// 切换是否需要全选提交记录来缓存
+        /// </summary>
+        [RelayCommand]
+        private void ToggleSelectedAllLogForCache()
+        {
+            DataTableSourece.All(d => d.IsNeedCache = !d.IsNeedCache);
+        }
         /// <summary>
         /// 下载变更
         /// </summary>
         /// <returns></returns>
         [RelayCommand]
         private async Task DownloadDiffAsync()
-        { 
-        
+        {
+            var progress = new Progress<int>(value =>
+            {
+                Progress = value;
+            });
+            var saveDir = Path.Combine(Application.StartupPath, "DiffCache");
+            if (!Directory.Exists(saveDir))
+            {
+                Directory.CreateDirectory(saveDir);
+            }
+
+            await DoDownloadDiffAsync(progress, saveDir);
+        }
+        /// <summary>
+        /// 下载所有变更
+        /// </summary>
+        /// <param name="progress"></param>
+        /// <returns></returns>
+        private async Task DoDownloadDiffAsync(IProgress<int> progress, string saveDir)
+        {
+            var source = DataTableSourece.Where(d => d.IsNeedCache);
+            var total = source.Count();
+            var pos = 0;
+
+            await Parallel.ForEachAsync(source, async (log, CancellationToken) =>
+            {
+                await SvnTools.DownloadFile(log.FileFullUrl, saveDir, log.Revision - 1);
+                await SvnTools.DownloadFile(log.FileFullUrl, saveDir, log.Revision);
+                Interlocked.Increment(ref pos);
+
+                progress.Report((int)(((float)pos / (float)total) * 100));
+            });
         }
 
         /// <summary>
@@ -329,8 +316,49 @@ namespace SvnSummaryTool
         /// <returns></returns>
         [RelayCommand]
         private async Task ClearLocalCache()
-        { 
-        
+        {
+            var saveDir = Path.Combine(Application.StartupPath, "DiffCache");
+            if (Directory.Exists(saveDir))
+            { 
+                Directory.Delete(saveDir, true);
+            }
+        }
+
+        /// <summary>
+        /// 作者选择状态变更
+        /// </summary>
+        [RelayCommand]
+        private void AuthorCheckedChanged()
+        {
+            var selectedAuthors = Authors
+                .Where(a => a.IsChecked)
+                .Select(a => a.Item).ToList();
+            var selectedUserLog = _LogFormats
+                .Where(log => selectedAuthors.Contains(log.Author));
+
+            if (selectedUserLog != null && selectedUserLog.Any())
+            {
+                AppendLineCount = selectedUserLog
+                    .Select(s => s.AppendLines)
+                    .Aggregate((l1, l2) => l1 + l2);
+
+                DeleteLineCount = selectedUserLog
+                    .Select(s => s.RemoveLines)
+                    .Aggregate((l1, l2) => l1 + l2);
+                DataTableSourece.Clear();
+                foreach (var item in selectedUserLog
+                    .OrderBy(x => x.CheckTime)
+                    .ThenBy(x => x.Author))
+                {
+                    DataTableSourece.Add(item);
+                }
+            }
+            else
+            {
+                AppendLineCount = 0;
+                DeleteLineCount = 0;
+                DataTableSourece.Clear();
+            }
         }
 
         private async Task DoCalculateDiffAsync(IProgress<int> progress)
@@ -338,15 +366,15 @@ namespace SvnSummaryTool
             var total = _LogFormats.Count;
             var pos = 0;
 
-            await Parallel.ForEachAsync(_LogFormats, new ParallelOptions() { MaxDegreeOfParallelism = 20 },
+            await Parallel.ForEachAsync(_LogFormats, new ParallelOptions() { MaxDegreeOfParallelism = 30 },
                             async (entry, cancellationToken) =>
                             {
                                 // 格式化Log对象，并计算修改行数
-                                var val = await SvnTools.GetLineDiff(entry.fileName, entry.LocalSvnDir, entry.version);
+                                var val = await SvnTools.GetLineDiff(entry.FileUrlPath, entry.SvnInfo, entry.Revision, DiffCheckMode.LocalFile);
 
-                                entry.appendLines = val.AppendLine;
-                                entry.removeLines = val.RemoveLine;
-                                entry.totalLines = val.AppendLine + val.RemoveLine;
+                                entry.AppendLines = val.AppendLine;
+                                entry.RemoveLines = val.RemoveLine;
+                                entry.TotalLines = val.AppendLine + val.RemoveLine;
                                 Interlocked.Increment(ref pos);
 
                                 progress.Report((int)(((float)pos / (float)total) * 100));
@@ -375,6 +403,7 @@ namespace SvnSummaryTool
             Settings.Default.svnDirSaved = new System.Collections.Specialized.StringCollection();
             Settings.Default.svnDirSaved.AddRange(ProjectsPath.ToArray());
             Settings.Default.Save();
+            LogHelper.Close();
         }
 
         /// <summary>
@@ -383,6 +412,8 @@ namespace SvnSummaryTool
         [RelayCommand]
         private void Load()
         {
+            LogHelper.InitLog();
+            LogHelper.Debug("Start!");
             var svnDirSaved = Settings.Default.svnDirSaved;
             if (svnDirSaved != null && svnDirSaved.Count != 0)
             {
@@ -406,7 +437,7 @@ namespace SvnSummaryTool
         /// <param name="formats"></param>
         /// <param name="logentry"></param>
         /// <returns></returns>
-        private List<LogFormat> ConvertLogEntry(string localSvnDir, Logentry logentry)
+        private List<LogFormat> ConvertLogEntry(SVNInfo svnInfo, Logentry logentry)
         {
             int revision = logentry.ReVision;
             string author = logentry.Author.Value;
@@ -414,7 +445,7 @@ namespace SvnSummaryTool
             var msg = logentry.Msg.Value;
             var reversion = logentry.ReVision;
 
-            List<Path> paths = logentry.Paths.Path.Where(x =>
+            List<PathChanged> paths = logentry.Paths.Path.Where(x =>
                                                     x.Kind == "file" &&
                                                     !IsIgnoreFile(x.Value)
                                                     ).ToList();
@@ -423,15 +454,15 @@ namespace SvnSummaryTool
             foreach (var path in paths)
             {
                 var logFormat = new LogFormat();
-                logFormat.author = author;
-                logFormat.fileName = path.Value;
-                logFormat.appendLines = 0;
-                logFormat.removeLines = 0;
-                logFormat.msg = msg;
-                logFormat.version = reversion;
-                logFormat.totalLines = 0;
-                logFormat.checkTime = checkDate.ToLocalTime();
-                logFormat.LocalSvnDir = localSvnDir;
+                logFormat.Author = author;
+                logFormat.FileUrlPath = path.Value;
+                logFormat.AppendLines = 0;
+                logFormat.RemoveLines = 0;
+                logFormat.Msg = msg;
+                logFormat.Revision = reversion;
+                logFormat.TotalLines = 0;
+                logFormat.CheckTime = checkDate.ToLocalTime();
+                logFormat.SvnInfo = svnInfo;
                 formats.Add(logFormat);
             }
             return formats;
@@ -485,7 +516,7 @@ namespace SvnSummaryTool
         [RelayCommand]
         private async Task TestAsync()
         {
-            var re = await SvnTools.GetSvnInfo(SelectedProjectPath);   
+
         }
     }
 

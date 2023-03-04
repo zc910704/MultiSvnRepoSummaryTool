@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Serilog.Core;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,8 +13,27 @@ namespace SvnSummaryTool
     [XmlRoot(ElementName = "log")]
     public class Log
     {
+        public static Logger Logger { get; internal set; }
         [XmlElement(ElementName = "logentry")]
         public List<Logentry> Logentry { get; set; }
+
+        public static Log Create(string logXml)
+        {
+            try
+            {
+                XmlSerializer serializer = new XmlSerializer(typeof(Log));
+                using (TextReader reader = new StringReader(logXml))
+                {
+                    var log = (Log)serializer.Deserialize(reader);
+                    return log;
+                }
+            }
+            catch(Exception e) 
+            {
+            
+            }
+            return new Log();
+        }
     }
 
     [XmlRoot(ElementName = "logentry")]
@@ -52,11 +73,11 @@ namespace SvnSummaryTool
     public class Paths
     {
         [XmlElement(ElementName = "path")]
-        public List<Path> Path { get; set; }
+        public List<PathChanged> Path { get; set; }
     }
 
     [XmlRoot(ElementName = "path")]
-    public class Path
+    public class PathChanged
     {
         [XmlAttribute(AttributeName = "text-mods")]
         public string TextMods { get; set; }
