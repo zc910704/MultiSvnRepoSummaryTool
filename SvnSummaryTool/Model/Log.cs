@@ -1,5 +1,4 @@
-﻿using Serilog.Core;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
@@ -13,7 +12,6 @@ namespace SvnSummaryTool
     [XmlRoot(ElementName = "log")]
     public class Log
     {
-        public static Logger Logger { get; internal set; }
         [XmlElement(ElementName = "logentry")]
         public List<Logentry> Logentry { get; set; }
 
