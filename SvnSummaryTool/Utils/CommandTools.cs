@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Diagnostics;
-using System.Linq;
+﻿using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -17,6 +13,7 @@ namespace SvnSummaryTool.Utils
         /// <returns></returns>
         public static string ExecuteCommand(string command)
         {
+            LogHelper.Debug($"CommandTools::ExecuteCommand |cmd = {command}");
             Process pro = new Process();
             pro.StartInfo.FileName = "cmd.exe";
             pro.StartInfo.UseShellExecute = false;
@@ -34,6 +31,7 @@ namespace SvnSummaryTool.Utils
             pro.Close();
             return output.Substring(output.IndexOf("& exit") + 8);
         }
+
         /// <summary>
         /// 异步执行CMD命令，并返回结果
         /// </summary>
@@ -41,6 +39,7 @@ namespace SvnSummaryTool.Utils
         /// <returns></returns>
         public static async Task<string> ExecuteCommandAsync(string command)
         {
+            LogHelper.Debug($"CommandTools::ExecuteCommandAsync |cmd = {command}");
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo
@@ -66,7 +65,9 @@ namespace SvnSummaryTool.Utils
                 else
                 {
                     process.OutputDataReceived -= outputHandler;
-                    taskCompletionSource.TrySetResult(strbuild.ToString());
+                    var result = strbuild.ToString();
+                    LogHelper.Debug($"CommandTools::ExecuteCommandAsync |Result = {result}");
+                    taskCompletionSource.TrySetResult(result);
                 }
             }
 

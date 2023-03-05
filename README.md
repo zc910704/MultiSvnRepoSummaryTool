@@ -6,17 +6,19 @@
 
 	- 允许选择多个svn库合并查看提交记录
 	- 可以自由选择用户并统计提交信息
-	- 可以用vscode 查看svn提交记录
+	- 可以用vscode 查看在线svn提交记录, 也可以将提交记录下载到本地进行离线查看
 
 - Requirement
 
-	- .Net6
-	- 将vs code配置到环境变量中
-	- svn安装命令行工具
+	- 安装[.Net6运行环境](https://dotnet.microsoft.com/en-us/download/dotnet/6.0)
+	- 将vs code配置到环境变量中(即把vscode的路径添加到path中)
+	- svn (tortoise工具)需要安装命令行工具
 
 - 界面截图
 
-![截图](./Images/main.png)
+![截图1](./Images/main.png)
+
+![截图2](./Images/diff.png)
 
 - 使用说明
 
@@ -28,8 +30,10 @@
 
 4. 点击计算变更, 将利用svn diff功能获取每次提交的变更行数
 
+5. 选择需要缓存的文件, 点击缓存到本地进行查看
+
 - 开源声明
 
-	+ 受 [dingguotu/SVNTool](https://github.com/dingguotu/SVNTool) 项目启发（使用了部分代码）。 使用wpf, CommunityToolkit.mvvm, Behavior.wpf 实现的异步多线程版本
+	+ 受 [dingguotu/SVNTool](https://github.com/dingguotu/SVNTool) 项目启发（使用了部分代码）。 使用wpf, CommunityToolkit.mvvm, Behavior.wpf , nlog实现的多svn库/异步/多线程版本
 
 	+ chatgpt提供了一些示例

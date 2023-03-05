@@ -1,15 +1,12 @@
-﻿using SvnSummaryTool.Model;
+﻿using Microsoft.VisualBasic;
+using SvnSummaryTool.Model;
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
-using System.Windows;
 using System.Xml;
 
 namespace SvnSummaryTool.Utils
@@ -53,7 +50,12 @@ namespace SvnSummaryTool.Utils
                 // 成功：A    DiffCache\a.42CCE7919597553FFF8D72E3E629D478.r4.cs Export complete.
                 if (!response.Contains("A"))
                 {
-                    using (var ts = File.CreateText(saveFilePath)) { }
+                    await Task.Delay(100);
+                    if (!File.Exists(saveFilePath))
+                    {
+                        LogHelper.Info($"SvnTools::DownloadFile |failed for {saveFilePath}");
+                        using (var ts = File.CreateText(saveFilePath)) { }
+                    }
                 }
             }
         }
