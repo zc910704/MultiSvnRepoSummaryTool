@@ -41,6 +41,11 @@ namespace SvnSummaryTool.Model
         [ObservableProperty]
         private bool _IsNeedCache = false;
         /// <summary>
+        /// 是否已经缓存
+        /// </summary>
+        [ObservableProperty]
+        private bool _IsCached = false;
+        /// <summary>
         /// 文件完整路径
         /// </summary>
         public string FileFullUrl

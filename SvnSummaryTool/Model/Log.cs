@@ -30,7 +30,7 @@ namespace SvnSummaryTool
             }
             catch(Exception e) 
             {
-            
+                LogHelper.Error("Create Log Error", e);
             }
             return new Log();
         }

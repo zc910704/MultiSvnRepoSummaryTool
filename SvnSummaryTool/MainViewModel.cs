@@ -111,6 +111,10 @@ namespace SvnSummaryTool
         /// 当前未筛选的日志
         /// </summary>
         private ConcurrentBag<LogFormat> _LogFormats = new ConcurrentBag<LogFormat>();
+        /// <summary>
+        /// 本地diff的缓存保存路径
+        /// </summary>
+        private string _DiffSaveDir = Path.Combine(Application.StartupPath, "DiffCache");
 
         /// <summary>
         /// 添加已经下载好的svn日志记录
@@ -255,6 +259,8 @@ namespace SvnSummaryTool
         [RelayCommand]
         private async Task StartCalculateDiffAsync()
         {
+            LogHelper.Debug("MainViewModel::StartCalculateDiffAsync |Enter");
+            Progress = 0;
             var progress = new Progress<int>(value =>
             {
                 Progress = value;
@@ -281,13 +287,13 @@ namespace SvnSummaryTool
             {
                 Progress = value;
             });
-            var saveDir = Path.Combine(Application.StartupPath, "DiffCache");
-            if (!Directory.Exists(saveDir))
+            
+            if (!Directory.Exists(_DiffSaveDir))
             {
-                Directory.CreateDirectory(saveDir);
+                Directory.CreateDirectory(_DiffSaveDir);
             }
 
-            await DoDownloadDiffAsync(progress, saveDir);
+            await DoDownloadDiffAsync(progress, _DiffSaveDir);
         }
         /// <summary>
         /// 下载所有变更
@@ -296,6 +302,7 @@ namespace SvnSummaryTool
         /// <returns></returns>
         private async Task DoDownloadDiffAsync(IProgress<int> progress, string saveDir)
         {
+            Progress = 0;
             var source = DataTableSourece.Where(d => d.IsNeedCache);
             var total = source.Count();
             var pos = 0;
@@ -304,8 +311,11 @@ namespace SvnSummaryTool
             {
                 await SvnTools.DownloadFile(log.FileFullUrl, saveDir, log.Revision - 1);
                 await SvnTools.DownloadFile(log.FileFullUrl, saveDir, log.Revision);
+
+                log.IsCached = true;
                 Interlocked.Increment(ref pos);
 
+                //await Task.Delay(1000);
                 progress.Report((int)(((float)pos / (float)total) * 100));
             });
         }
@@ -350,6 +360,9 @@ namespace SvnSummaryTool
                     .OrderBy(x => x.CheckTime)
                     .ThenBy(x => x.Author))
                 {
+                    // 检查本地是否有该文件缓存
+                    item.IsCached = SvnTools.CheckFileExistInCache(item.FileFullUrl, _DiffSaveDir, item.Revision) 
+                        && SvnTools.CheckFileExistInCache(item.FileFullUrl, _DiffSaveDir, item.Revision - 1);
                     DataTableSourece.Add(item);
                 }
             }
@@ -377,6 +390,7 @@ namespace SvnSummaryTool
                                 entry.TotalLines = val.AppendLine + val.RemoveLine;
                                 Interlocked.Increment(ref pos);
 
+                                //await Task.Delay(1000);
                                 progress.Report((int)(((float)pos / (float)total) * 100));
                             });
         }
@@ -390,7 +404,7 @@ namespace SvnSummaryTool
         {
             if (SelectedLogFormat != null)
             {
-                await SvnTools.ShowDiffInVscode(SelectedLogFormat);
+                await SvnTools.ShowDiffInVscode(SelectedLogFormat, _DiffSaveDir);
             }
         }
 
@@ -412,7 +426,6 @@ namespace SvnSummaryTool
         [RelayCommand]
         private void Load()
         {
-            LogHelper.InitLog();
             LogHelper.Debug("Start!");
             var svnDirSaved = Settings.Default.svnDirSaved;
             if (svnDirSaved != null && svnDirSaved.Count != 0)

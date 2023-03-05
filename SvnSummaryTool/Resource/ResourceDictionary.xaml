@@ -3,4 +3,6 @@
                     xmlns:ct="clr-namespace:SvnSummaryTool.Resource.Converter">
     <!--转换器-->
     <ct:VisibilityConverter x:Key="VisibilityConverter"></ct:VisibilityConverter>
+    <ct:DataGridVsCodeColConverter x:Key="DataGridVsCodeColConverter"></ct:DataGridVsCodeColConverter>
+    <ct:MultiVisibilityConverter x:Key="MultiVisibilityConverter"></ct:MultiVisibilityConverter>
 </ResourceDictionary>

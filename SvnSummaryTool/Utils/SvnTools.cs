@@ -42,26 +42,58 @@ namespace SvnSummaryTool.Utils
         /// <returns></returns>
         public static async Task DownloadFile(string fileUrl, string saveDir, int revision)
         {
+            string saveFilePath = GetSaveFilePath(fileUrl, saveDir, revision);
+
+            if (!File.Exists(saveFilePath))
+            {
+                var cmd = $"svn export {fileUrl}@{revision} {saveFilePath}";
+                var response = await CommandTools.ExecuteCommandAsync(cmd);
+                // 失败：svn: E170000: URL 'http://home/svn/Demo/trunk/Folder1/a.cs' doesn't exist
+                // 文件不存在就写空                
+                // 成功：A    DiffCache\a.42CCE7919597553FFF8D72E3E629D478.r4.cs Export complete.
+                if (!response.Contains("A"))
+                {
+                    using (var ts = File.CreateText(saveFilePath)) { }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 获取保存路径
+        /// </summary>
+        /// <param name="fileUrl"></param>
+        /// <param name="saveDir"></param>
+        /// <param name="revision"></param>
+        /// <returns></returns>
+        private static string GetSaveFilePath(string fileUrl, string saveDir, int revision)
+        {
             var fileName = Path.GetFileName(fileUrl);
             var extension = Path.GetExtension(fileUrl);
             // 使用md5作为路径唯一编码
             var md5 = GetStrMd5(fileUrl);
             var saveFileName = Path.ChangeExtension(fileName, $".{md5}.r{revision}{extension}");
             var saveFilePath = Path.Combine(saveDir, saveFileName);
-
-            if (!File.Exists(saveFilePath))
-            {
-                var cmd = $"svn export {fileUrl}@{revision} {saveFilePath}";
-                var response = await CommandTools.ExecuteCommandAsync(cmd);
-                // svn: E170000: URL 'http://home/svn/Demo/trunk/Folder1/a.cs' doesn't exist
-                // 文件不存在就写空
-                if (response.Contains("E170000"))
-                {
-                    
-                }
-            }
+            return saveFilePath;
         }
 
+        /// <summary>
+        /// 检查文件是否存在
+        /// </summary>
+        /// <param name="fileUrl"></param>
+        /// <param name="saveDir"></param>
+        /// <param name="revision"></param>
+        /// <returns></returns>
+        public static bool CheckFileExistInCache(string fileUrl, string saveDir, int revision)
+        {
+            string saveFilePath = GetSaveFilePath(fileUrl, saveDir, revision);
+            return File.Exists(saveFilePath);
+        }
+
+        /// <summary>
+        /// 获取svn信息
+        /// </summary>
+        /// <param name="svnDir"></param>
+        /// <returns></returns>
         public static async Task<SvnInfoResponse> GetSvnInfo(string svnDir)
         {
             var cmd = $"svn info --xml {svnDir}";
@@ -127,16 +159,27 @@ namespace SvnSummaryTool.Utils
         /// 在vscode中比较版本差别
         /// </summary>
         /// <returns></returns>
-        public static async Task ShowDiffInVscode(LogFormat logFormat)
+        public static async Task ShowDiffInVscode(LogFormat logFormat, string saveDir)
         {
-            var localfilePath = await ConvertUrlToLocalFilePath(logFormat.SvnInfo.WorkCopyInfo.RootPath, logFormat.FileUrlPath);
-            // https://stackoverflow.com/questions/74100260/how-to-compare-files-between-two-svn-revisions-in-vs-code
-            // 第二种方式有的有问题
-            // 1. svn diff --old CCP6600.cs@5817 --new CCP6600.cs@5818 --diff-cmd "C:\Program Files\Microsoft VS Code\Code.exe" -x "--wait --diff"
-            // 2. svn diff -r 5818 CCP6600.cs --diff-cmd  Code -x "--wait --diff"
-            var oldVersion = logFormat.Revision > 1 ? logFormat.Revision - 1 : 0;
-            var cmd = $"svn diff --old {localfilePath}@{oldVersion} --new {localfilePath}@{logFormat.Revision} --diff-cmd Code -x \"--wait --diff\"";
-            await CommandTools.ExecuteCommandAsync(cmd);
+            if (logFormat.IsCached) 
+            {
+                var oldVersion = GetSaveFilePath(logFormat.FileFullUrl, saveDir, logFormat.Revision - 1);
+                var newVersion = GetSaveFilePath(logFormat.FileFullUrl, saveDir, logFormat.Revision);
+
+                var cmd = $"Code --diff --wait {oldVersion} {newVersion}";
+                await CommandTools.ExecuteCommandAsync(cmd);
+            }
+            else
+            {
+                var localfilePath = await ConvertUrlToLocalFilePath(logFormat.SvnInfo.WorkCopyInfo.RootPath, logFormat.FileUrlPath);
+                // https://stackoverflow.com/questions/74100260/how-to-compare-files-between-two-svn-revisions-in-vs-code
+                // 第二种方式有的有问题
+                // 1. svn diff --old CCP6600.cs@5817 --new CCP6600.cs@5818 --diff-cmd "C:\Program Files\Microsoft VS Code\Code.exe" -x "--wait --diff"
+                // 2. svn diff -r 5818 CCP6600.cs --diff-cmd  Code -x "--wait --diff"
+                var oldVersion = logFormat.Revision > 1 ? logFormat.Revision - 1 : 0;
+                var cmd = $"svn diff --old {localfilePath}@{oldVersion} --new {localfilePath}@{logFormat.Revision} --diff-cmd Code -x \"--wait --diff\"";
+                await CommandTools.ExecuteCommandAsync(cmd);
+            }
         }
 
 

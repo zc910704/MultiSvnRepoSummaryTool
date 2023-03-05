@@ -13,7 +13,7 @@ namespace SvnSummaryTool
 #else
                 .MinimumLevel.Information()
 #endif
-                .WriteTo.File("log.txt", rollingInterval: RollingInterval.Day)
+                .WriteTo.File(@"logs\log.txt")
                 .CreateLogger();
         }
 

@@ -34,7 +34,7 @@ namespace SvnSummaryTool.Model
             }
             catch (Exception e)
             {
-
+                LogHelper.Error("Create SvnInfoResponse Error", e);
             }
             return null;
         }
@@ -55,8 +55,9 @@ namespace SvnSummaryTool.Model
                 }
             }
             catch (Exception e)
-            { 
-            }            
+            {
+                LogHelper.Error("save SvnInfoResponse Error", e);
+            }
         }
     }
 

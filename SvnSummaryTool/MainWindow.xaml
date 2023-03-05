@@ -123,12 +123,29 @@
                 <Label Width="80" Content="{Binding DeleteLineCount}"></Label>
                 <Label>总行数:</Label>
                 <Label Width="80" Content="{Binding Path=ModifyLineCount}"></Label>
-                <Button Width="80" Command="{Binding StartCalculateDiffCommand}" Margin="5">计算变更</Button>
+                <Button Width="80" 
+                        Command="{Binding StartCalculateDiffCommand}" 
+                        Margin="5">计算变更</Button>
                 <!--进度条value值为0~100-->
-                <Button Width="80" Command="{Binding DownloadDiffCommand}" Margin="5">缓存变更</Button>
-                <Button Width="80" Command="{Binding ClearLocalCacheCommand}" Margin="5">清空缓存</Button>
-                <ProgressBar Width="80" Margin="5" Value="{Binding Progress}" Visibility="{Binding Path=StartCalculateDiffCommand.IsRunning, Converter={StaticResource VisibilityConverter}}" ></ProgressBar>
-                <Button Width="80" Command="{Binding Path=TestCommand}" Margin="5" Visibility="{Binding Path=DebugMode, Converter={StaticResource VisibilityConverter}}">测试</Button>
+                <Button Width="80"
+                        x:Name="downloadDiffbtn"
+                        Command="{Binding DownloadDiffCommand}" 
+                        Margin="5">缓存变更</Button>
+                <Button Width="80" Command="{Binding 
+                    ClearLocalCacheCommand}" 
+                        Margin="5">清空缓存</Button>
+                <ProgressBar Width="80" Margin="5" Value="{Binding Progress}">
+                    <ProgressBar.Visibility>
+                        <!--note: 这里没有xaml提示-->
+                        <MultiBinding Converter="{StaticResource MultiVisibilityConverter}">
+                            <Binding Path="StartCalculateDiffCommand.IsRunning"></Binding>
+                            <Binding Path="DownloadDiffCommand.IsRunning"></Binding>
+                        </MultiBinding>
+                    </ProgressBar.Visibility>
+                </ProgressBar>
+                <Button Width="80" Command="{Binding Path=TestCommand}" 
+                        Margin="5" 
+                        Visibility="{Binding Path=DebugMode, Converter={StaticResource VisibilityConverter}}">测试</Button>
             </StackPanel>
             <ListView Grid.Row="1" 
                       Grid.Column="0"
@@ -212,7 +229,7 @@
                     </DataGridTextColumn>
                     <DataGridTextColumn
                         IsReadOnly="True"
-                        Binding="{Binding Path=FileName}"
+                        Binding="{Binding Path=FileUrlPath}"
                         Header="文件名"
                         Width="auto">
                     </DataGridTextColumn>
@@ -243,10 +260,12 @@
                     <DataGridTemplateColumn
                         IsReadOnly="True"
                         Header="使用VsCode"
-                        Width="80">
+                        Width="auto">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Button Command="{Binding ElementName=datagrid, Path=DataContext.ShowDiffInVsCodeCommand}" Background="CadetBlue">查看</Button>
+                                <Button Command="{Binding ElementName=datagrid, Path=DataContext.ShowDiffInVsCodeCommand}" 
+                                        Background="CadetBlue" 
+                                        Content="{Binding IsCached, Converter={StaticResource DataGridVsCodeColConverter}, Mode=OneWay}"></Button>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

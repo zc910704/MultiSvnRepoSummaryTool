@@ -13,5 +13,9 @@ namespace SvnSummaryTool
     /// </summary>
     public partial class App : Application
     {
+        public App()
+        {
+            LogHelper.InitLog();
+        }
     }
 }
