@@ -15,7 +15,7 @@ namespace SvnSummaryTool
 
         public static void Debug(string info) => _Logger.Debug(info);
 
-        public static void Error(string msg, Exception e) => _Logger.Error(msg, e);
+        public static void Error(string msg, Exception e) => _Logger.Error(e, msg);
 
         public static void Close()
         {

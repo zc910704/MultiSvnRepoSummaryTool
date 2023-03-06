@@ -77,7 +77,7 @@ namespace SvnSummaryTool
             }
             catch (Exception e)
             {
-                LogHelper.Error("Create SvnLogInfo Error", e);
+                LogHelper.Error($"SvnLogInfo::Create |Create SvnLogInfo Exception: {e.Message}", e);
             }
             return new SvnLogInfo();
         }
