@@ -290,6 +290,10 @@ namespace SvnSummaryTool
             }
         }
 
+        /// <summary>
+        /// 开始计算变更行数
+        /// </summary>
+        /// <returns></returns>
         [RelayCommand]
         private async Task StartCalculateDiffAsync()
         {
@@ -481,9 +485,11 @@ namespace SvnSummaryTool
         private async Task DoDownloadDiffAsync(IProgress<int> progress, string saveDir)
         {
             Progress = 0;
+
             var source = DataTableSourece.Where(d => d.IsNeedCache);
             var total = source.Count();
             var pos = 0;
+            LogHelper.Debug($"MainViewModel::DoDownloadDiffAsync |start for total {total}");
 
             await Parallel.ForEachAsync(source, async (log, CancellationToken) =>
             {
@@ -493,6 +499,7 @@ namespace SvnSummaryTool
                 log.IsCached = true;
                 Interlocked.Increment(ref pos);
 
+                LogHelper.Debug($"MainViewModel::DoCalculateDiffAsync |pos/total = {pos}/{total}");
                 //await Task.Delay(1000);
                 progress.Report((int)(((float)pos / (float)total) * 100));
             });
@@ -505,6 +512,7 @@ namespace SvnSummaryTool
                 var total = _LogFormats.Count;
                 var pos = 0;
 
+                LogHelper.Debug($"MainViewModel::DoCalculateDiffAsync |start for total {total}");
                 await Parallel.ForEachAsync(_LogFormats, new ParallelOptions() { MaxDegreeOfParallelism = 30 },
                                 async (entry, cancellationToken) =>
                                 {
@@ -515,7 +523,7 @@ namespace SvnSummaryTool
                                     entry.RemoveLines = val.RemoveLine;
                                     entry.TotalLines = val.AppendLine + val.RemoveLine;
                                     Interlocked.Increment(ref pos);
-
+                                    LogHelper.Debug($"MainViewModel::DoCalculateDiffAsync |pos/total = {pos}/{total}");
                                     //await Task.Delay(1000);
                                     progress.Report((int)(((float)pos / (float)total) * 100));
                                 });
