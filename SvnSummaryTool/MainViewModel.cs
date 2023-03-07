@@ -121,7 +121,7 @@ namespace SvnSummaryTool
         /// </summary>
         [RelayCommand]
         private void AddSvnDir()
-        {
+        {            
             FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog();
             folderBrowserDialog.Description = "请选择需要统计svn日志xml";
             folderBrowserDialog.RootFolder = Environment.SpecialFolder.Desktop;
@@ -139,6 +139,14 @@ namespace SvnSummaryTool
         [RelayCommand(CanExecute = nameof(CanRemoveSvnDir))]        
         private void RemoveSvnDir() 
         {
+            try
+            { 
+            
+            }
+            catch(Exception ex) 
+            {
+                LogHelper.Error("MainViewModel::RemoveSvnDir |Exception.", ex);
+            }
             ProjectsPath.Remove(SelectedProjectPath);
         }
 
@@ -157,36 +165,43 @@ namespace SvnSummaryTool
         [RelayCommand]
         private async Task FetchSvnLogAsync()
         {
-            // 检查SVNLog文件夹是否存在，不存在创建
-            var logSaveDir = $@"{Application.StartupPath}\SVNLog";
-            if (Directory.Exists(logSaveDir))
+            try
             {
-                Directory.Delete(logSaveDir, true);
+                // 检查SVNLog文件夹是否存在，不存在创建
+                var logSaveDir = $@"{Application.StartupPath}\SVNLog";
+                if (Directory.Exists(logSaveDir))
+                {
+                    Directory.Delete(logSaveDir, true);
+                }
+                Directory.CreateDirectory(logSaveDir);
+                foreach (var svnDir in ProjectsPath)
+                {
+                    // 下载svn的log文件名
+                    string logFileName = $"{svnDir.Split('\\').ToList().LastOrDefault()}.log";
+                    // 检测是否下载成功
+                    if (!await SvnTools.DownloadLogFile(logSaveDir, logFileName, svnDir, StartTime, EndTime))
+                    {
+                        MessageBox.Show("请输入正确的项目地址", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+                    // 用来保存svn信息的文件名
+                    string svnInfoFilename = $"{svnDir.Split('\\').ToList().LastOrDefault()}.svnInfo";
+                    var svnInfoResponse = await SvnTools.GetSvnInfo(svnDir);
+                    // 需要把svn的信息保存下来
+                    svnInfoResponse.Save(@$"{logSaveDir}\{svnInfoFilename}");
+                    // 读取log文件
+                    var log = SvnLogInfo.Create(logSaveDir, logFileName, svnInfoResponse.Value);
+                    if (log != null)
+                    {
+                        ProjectSvnLogInfo.Add(log);
+                    }
+                }
+                //await Task.Delay(2000);
             }
-            Directory.CreateDirectory(logSaveDir);
-            foreach (var svnDir in ProjectsPath)
+            catch (Exception ex)
             {
-                // 下载svn的log文件名
-                string logFileName = $"{svnDir.Split('\\').ToList().LastOrDefault()}.log";                
-                // 检测是否下载成功
-                if (!await SvnTools.DownloadLogFile(logSaveDir, logFileName, svnDir, StartTime, EndTime))
-                {
-                    MessageBox.Show("请输入正确的项目地址", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return;
-                }
-                // 用来保存svn信息的文件名
-                string svnInfoFilename = $"{svnDir.Split('\\').ToList().LastOrDefault()}.svnInfo";
-                var svnInfoResponse = await SvnTools.GetSvnInfo(svnDir);
-                // 需要把svn的信息保存下来
-                svnInfoResponse.Save(@$"{logSaveDir}\{svnInfoFilename}");
-                // 读取log文件
-                var log = SvnLogInfo.Create(logSaveDir, logFileName, svnInfoResponse.Value);
-                if (log != null)
-                {
-                    ProjectSvnLogInfo.Add(log);
-                }
-            }
-            //await Task.Delay(2000);
+                LogHelper.Error("MainViewModel::FetchSvnLogAsync |Exception", ex);
+            }           
         }
         /// <summary>
         /// 删除要分析的日志
@@ -194,14 +209,17 @@ namespace SvnSummaryTool
         [RelayCommand(CanExecute = nameof(CanRemoveSvnLogInfo))]
         private void RemoveLog()
         {
-            var next = GetNext(ProjectSvnLogInfo, SelectedSvnLogInfo);
-            ProjectSvnLogInfo.Remove(SelectedSvnLogInfo);
-            SelectedSvnLogInfo = next;
+            try
+            {
+                var next = GetNext(ProjectSvnLogInfo, SelectedSvnLogInfo);
+                ProjectSvnLogInfo.Remove(SelectedSvnLogInfo);
+                SelectedSvnLogInfo = next;
+            }
+            catch (Exception ex)
+            { 
+                LogHelper.Error("MainViewModel::RemoveLog |Exception", ex);
+            }
         }
-        /// <summary>
-        /// 能否移除待分析的svn日志
-        /// </summary>
-        private bool CanRemoveSvnLogInfo => CanRemoveSvnLogInfoEnalbe;
 
         /// <summary>
         /// 新增要分析的日志
@@ -209,21 +227,29 @@ namespace SvnSummaryTool
         [RelayCommand]
         private void AddLog()
         {
-            var fileDialog = new OpenFileDialog();
-            if (fileDialog.ShowDialog() == DialogResult.OK)
+            try
             {
-                if (!ProjectSvnLogInfo.Any(p => PathChanged.Equals(p.LogDir, fileDialog.FileName)))
+                var fileDialog = new OpenFileDialog();
+                if (fileDialog.ShowDialog() == DialogResult.OK)
                 {
-                    var filename = fileDialog.FileName;
-                    var fileInfo = new FileInfo(filename);
-                    var dir = fileInfo.DirectoryName;
-                    SvnLogInfo? svnInfo = SvnLogInfo.Create(dir, fileInfo.Name, null);
-                    if (svnInfo != null && ProjectSvnLogInfo.All(p => p.SvnInfo?.Url != svnInfo.SvnInfo?.Url))
-                    {                        
-                        ProjectSvnLogInfo.Add(svnInfo);
+                    if (!ProjectSvnLogInfo.Any(p => PathChanged.Equals(p.LogDir, fileDialog.FileName)))
+                    {
+                        var filename = fileDialog.FileName;
+                        var fileInfo = new FileInfo(filename);
+                        var dir = fileInfo.DirectoryName;
+                        SvnLogInfo? svnInfo = SvnLogInfo.Create(dir, fileInfo.Name, null);
+                        if (svnInfo != null && ProjectSvnLogInfo.All(p => p.SvnInfo?.Url != svnInfo.SvnInfo?.Url))
+                        {
+                            ProjectSvnLogInfo.Add(svnInfo);
+                        }
                     }
                 }
             }
+            catch(Exception ex) 
+            { 
+                LogHelper.Error("MainViewModel::AddLog |Exception", ex);
+            }
+
         }
 
         /// <summary>
@@ -233,42 +259,54 @@ namespace SvnSummaryTool
         [RelayCommand]
         private void Convert()
         {
-            _LogFormats.Clear();
-            Authors.Clear();
-
-            // 获取所有提交的集合
-            var logEntrywithInfo = new List<Tuple<SvnLogInfo, Logentry>>();
-            foreach (var svnlogInfo in ProjectSvnLogInfo)
+            try
             {
-                foreach (var entry in svnlogInfo.Log!.Logentry)
+                _LogFormats.Clear();
+                Authors.Clear();
+
+                // 获取所有提交的集合
+                var logEntrywithInfo = new List<Tuple<SvnLogInfo, Logentry>>();
+                foreach (var svnlogInfo in ProjectSvnLogInfo)
                 {
-                    // 格式化Log对象
-                    var current = ConvertLogEntry(svnlogInfo.SvnInfo, entry);
-                    foreach (var c in current)
+                    foreach (var entry in svnlogInfo.Log!.Logentry)
                     {
-                        _LogFormats.Add(c);
+                        // 格式化Log对象
+                        var current = ConvertLogEntry(svnlogInfo.SvnInfo, entry);
+                        foreach (var c in current)
+                        {
+                            _LogFormats.Add(c);
+                        }
                     }
-                }                
-            }
+                }
 
-            foreach (var author in _LogFormats.Select(f => f.Author).Distinct())
+                foreach (var author in _LogFormats.Select(f => f.Author).Distinct())
+                {
+                    Authors.Add(new CanCheckedItem<string>(author));
+                }
+            }
+            catch( Exception ex )
             {
-                Authors.Add(new CanCheckedItem<string>(author));
+                LogHelper.Error("MainViewModel::Convert |Exception", ex);
             }
-
         }
 
         [RelayCommand]
         private async Task StartCalculateDiffAsync()
         {
-            LogHelper.Debug("MainViewModel::StartCalculateDiffAsync |Enter");
-            Progress = 0;
-            var progress = new Progress<int>(value =>
+            try
             {
-                Progress = value;
-            });
-            await DoCalculateDiffAsync(progress);
-
+                LogHelper.Debug("MainViewModel::StartCalculateDiffAsync |Enter");
+                Progress = 0;
+                var progress = new Progress<int>(value =>
+                {
+                    Progress = value;
+                });
+                await DoCalculateDiffAsync(progress);
+            }
+            catch ( Exception ex )
+            {
+                LogHelper.Error("MainViewModel::StartCalculateDiffAsync |Exception", ex);
+            }
         }
         /// <summary>
         /// 切换是否需要全选提交记录来缓存
@@ -286,41 +324,24 @@ namespace SvnSummaryTool
         [RelayCommand]
         private async Task DownloadDiffAsync()
         {
-            var progress = new Progress<int>(value =>
+            try
             {
-                Progress = value;
-            });
-            
-            if (!Directory.Exists(_DiffSaveDir))
-            {
-                Directory.CreateDirectory(_DiffSaveDir);
+                var progress = new Progress<int>(value =>
+                {
+                    Progress = value;
+                });
+
+                if (!Directory.Exists(_DiffSaveDir))
+                {
+                    Directory.CreateDirectory(_DiffSaveDir);
+                }
+
+                await DoDownloadDiffAsync(progress, _DiffSaveDir);
             }
-
-            await DoDownloadDiffAsync(progress, _DiffSaveDir);
-        }
-        /// <summary>
-        /// 下载所有变更
-        /// </summary>
-        /// <param name="progress"></param>
-        /// <returns></returns>
-        private async Task DoDownloadDiffAsync(IProgress<int> progress, string saveDir)
-        {
-            Progress = 0;
-            var source = DataTableSourece.Where(d => d.IsNeedCache);
-            var total = source.Count();
-            var pos = 0;
-
-            await Parallel.ForEachAsync(source, async (log, CancellationToken) =>
+            catch(Exception ex) 
             {
-                await SvnTools.DownloadFile(log.FileFullUrl, saveDir, log.Revision - 1);
-                await SvnTools.DownloadFile(log.FileFullUrl, saveDir, log.Revision);
-
-                log.IsCached = true;
-                Interlocked.Increment(ref pos);
-
-                //await Task.Delay(1000);
-                progress.Report((int)(((float)pos / (float)total) * 100));
-            });
+                LogHelper.Error("MainViewModel::DownloadDiffAsync |Exception", ex);
+            }           
         }
 
         /// <summary>
@@ -330,11 +351,19 @@ namespace SvnSummaryTool
         [RelayCommand]
         private async Task ClearLocalCache()
         {
-            var saveDir = Path.Combine(Application.StartupPath, "DiffCache");
-            if (Directory.Exists(saveDir))
-            { 
-                Directory.Delete(saveDir, true);
+            try
+            {
+                var saveDir = Path.Combine(Application.StartupPath, "DiffCache");
+                if (Directory.Exists(saveDir))
+                {
+                    Directory.Delete(saveDir, true);
+                }
             }
+            catch (Exception ex) 
+            {
+                LogHelper.Error("MainViewModel::ClearLocalCache |Exception", ex);
+            }
+
         }
 
         /// <summary>
@@ -343,59 +372,45 @@ namespace SvnSummaryTool
         [RelayCommand]
         private void AuthorCheckedChanged()
         {
-            var selectedAuthors = Authors
-                .Where(a => a.IsChecked)
-                .Select(a => a.Item).ToList();
-            var selectedUserLog = _LogFormats
-                .Where(log => selectedAuthors.Contains(log.Author));
-
-            if (selectedUserLog != null && selectedUserLog.Any())
+            try
             {
-                AppendLineCount = selectedUserLog
-                    .Select(s => s.AppendLines)
-                    .Aggregate((l1, l2) => l1 + l2);
+                var selectedAuthors = Authors
+                    .Where(a => a.IsChecked)
+                    .Select(a => a.Item).ToList();
+                var selectedUserLog = _LogFormats
+                    .Where(log => selectedAuthors.Contains(log.Author));
 
-                DeleteLineCount = selectedUserLog
-                    .Select(s => s.RemoveLines)
-                    .Aggregate((l1, l2) => l1 + l2);
-                DataTableSourece.Clear();
-                foreach (var item in selectedUserLog
-                    .OrderBy(x => x.CheckTime)
-                    .ThenBy(x => x.Author))
+                if (selectedUserLog != null && selectedUserLog.Any())
                 {
-                    // 检查本地是否有该文件缓存
-                    item.IsCached = SvnTools.CheckFileExistInCache(item.FileFullUrl, _DiffSaveDir, item.Revision) 
-                        && SvnTools.CheckFileExistInCache(item.FileFullUrl, _DiffSaveDir, item.Revision - 1);
-                    DataTableSourece.Add(item);
+                    AppendLineCount = selectedUserLog
+                        .Select(s => s.AppendLines)
+                        .Aggregate((l1, l2) => l1 + l2);
+
+                    DeleteLineCount = selectedUserLog
+                        .Select(s => s.RemoveLines)
+                        .Aggregate((l1, l2) => l1 + l2);
+                    DataTableSourece.Clear();
+                    foreach (var item in selectedUserLog
+                        .OrderBy(x => x.CheckTime)
+                        .ThenBy(x => x.Author))
+                    {
+                        // 检查本地是否有该文件缓存
+                        item.IsCached = SvnTools.CheckFileExistInCache(item.FileFullUrl, _DiffSaveDir, item.Revision)
+                            && SvnTools.CheckFileExistInCache(item.FileFullUrl, _DiffSaveDir, item.Revision - 1);
+                        DataTableSourece.Add(item);
+                    }
+                }
+                else
+                {
+                    AppendLineCount = 0;
+                    DeleteLineCount = 0;
+                    DataTableSourece.Clear();
                 }
             }
-            else
+            catch (Exception ex) 
             {
-                AppendLineCount = 0;
-                DeleteLineCount = 0;
-                DataTableSourece.Clear();
+                LogHelper.Error("MainViewModel::AuthorCheckedChanged |Exception", ex);
             }
-        }
-
-        private async Task DoCalculateDiffAsync(IProgress<int> progress)
-        {
-            var total = _LogFormats.Count;
-            var pos = 0;
-
-            await Parallel.ForEachAsync(_LogFormats, new ParallelOptions() { MaxDegreeOfParallelism = 30 },
-                            async (entry, cancellationToken) =>
-                            {
-                                // 格式化Log对象，并计算修改行数
-                                var val = await SvnTools.GetLineDiff(entry.FileUrlPath, entry.SvnInfo, entry.Revision, DiffCheckMode.LocalFile);
-
-                                entry.AppendLines = val.AppendLine;
-                                entry.RemoveLines = val.RemoveLine;
-                                entry.TotalLines = val.AppendLine + val.RemoveLine;
-                                Interlocked.Increment(ref pos);
-
-                                //await Task.Delay(1000);
-                                progress.Report((int)(((float)pos / (float)total) * 100));
-                            });
         }
 
         /// <summary>
@@ -440,6 +455,64 @@ namespace SvnSummaryTool
                         ProjectsPath.Add(dir);
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// 能否移除待分析的svn日志
+        /// </summary>
+        private bool CanRemoveSvnLogInfo => CanRemoveSvnLogInfoEnalbe;
+
+        /// <summary>
+        /// 下载所有变更
+        /// </summary>
+        /// <param name="progress"></param>
+        /// <returns></returns>
+        private async Task DoDownloadDiffAsync(IProgress<int> progress, string saveDir)
+        {
+            Progress = 0;
+            var source = DataTableSourece.Where(d => d.IsNeedCache);
+            var total = source.Count();
+            var pos = 0;
+
+            await Parallel.ForEachAsync(source, async (log, CancellationToken) =>
+            {
+                await SvnTools.DownloadFile(log.FileFullUrl, saveDir, log.Revision - 1);
+                await SvnTools.DownloadFile(log.FileFullUrl, saveDir, log.Revision);
+
+                log.IsCached = true;
+                Interlocked.Increment(ref pos);
+
+                //await Task.Delay(1000);
+                progress.Report((int)(((float)pos / (float)total) * 100));
+            });
+        }
+
+        private async Task DoCalculateDiffAsync(IProgress<int> progress)
+        {
+            try
+            {
+                var total = _LogFormats.Count;
+                var pos = 0;
+
+                await Parallel.ForEachAsync(_LogFormats, new ParallelOptions() { MaxDegreeOfParallelism = 30 },
+                                async (entry, cancellationToken) =>
+                                {
+                                    // 格式化Log对象，并计算修改行数
+                                    var val = await SvnTools.GetLineDiff(entry.FileUrlPath, entry.SvnInfo, entry.Revision, DiffCheckMode.LocalFile);
+
+                                    entry.AppendLines = val.AppendLine;
+                                    entry.RemoveLines = val.RemoveLine;
+                                    entry.TotalLines = val.AppendLine + val.RemoveLine;
+                                    Interlocked.Increment(ref pos);
+
+                                    //await Task.Delay(1000);
+                                    progress.Report((int)(((float)pos / (float)total) * 100));
+                                });
+            }
+            catch (Exception ex)
+            {
+                LogHelper.Error("MainViewModel::DoCalculateDiffAsync |Exception", ex);
             }
         }
 
