@@ -41,8 +41,7 @@ namespace SvnSummaryTool.Utils
         public static async Task<string> ExecuteCommandAsync(string command)
         {
             LogHelper.Debug($"CommandTools::ExecuteCommandAsync |cmd = {command}");
-
-            var process = new Process()
+            var process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
@@ -51,25 +50,33 @@ namespace SvnSummaryTool.Utils
                     RedirectStandardOutput = true,
                     UseShellExecute = false,
                     CreateNoWindow = true
-                },
-                EnableRaisingEvents = true
+                }
             };
-
             // .Net5以后新增API
             // https://learn.microsoft.com/zh-cn/dotnet/api/system.threading.tasks.taskcompletionsource.trysetresult?view=net-7.0
-            var tcs = new TaskCompletionSource<string>();
-            void outputHandler(object sender,EventArgs e)
+            var taskCompletionSource = new TaskCompletionSource<string>();
+            var strbuild = new StringBuilder();
+            //定义回调
+            void outputHandler(object sender, DataReceivedEventArgs args)
             {
-                var result = process.StandardOutput.ReadToEnd();
-                LogHelper.Debug($"CommandTools::ExecuteCommandAsync |Result = {result}");
-                tcs.TrySetResult(result);
-                process.Exited -= outputHandler;
-            };
+                if (args.Data != null)
+                {
+                    strbuild.AppendLine(args.Data);
+                }
+                else
+                {
+                    process.OutputDataReceived -= outputHandler;
+                    var result = strbuild.ToString();
+                    LogHelper.Debug($"CommandTools::ExecuteCommandAsync |Result = {result}");
+                    taskCompletionSource.TrySetResult(result);
+                }
+            }
 
-            process.Exited += outputHandler;
+            process.OutputDataReceived += outputHandler;
             process.Start();
+            process.BeginOutputReadLine();
 
-            return await tcs.Task;
+            return await taskCompletionSource.Task;
         }
     }
 }
