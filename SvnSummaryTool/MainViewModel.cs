@@ -272,9 +272,10 @@ namespace SvnSummaryTool
         /// 切换是否需要全选提交记录来缓存
         /// </summary>
         [RelayCommand]
-        private void ToggleSelectedAllLogForCache()
+        private void ToggleSelectedAllLogForCache(bool isChecked)
         {
-            DataTableSourece.All(d => d.IsNeedCache = !d.IsNeedCache);
+            isChecked = !isChecked;
+            foreach (var item in DataTableSourece) { item.IsNeedCache = isChecked; }
         }
         /// <summary>
         /// 下载变更
