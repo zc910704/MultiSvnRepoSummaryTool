@@ -10,6 +10,10 @@
     <d:Window.DataContext>
         <local:MainViewModel></local:MainViewModel>
     </d:Window.DataContext>
+    <Window.InputBindings>
+        <KeyBinding Command="{Binding Path=TestCommand}" Modifiers="Alt" Key="D">            
+        </KeyBinding>
+    </Window.InputBindings>
     <i:Interaction.Triggers>
         <i:EventTrigger EventName="Loaded">
             <i:InvokeCommandAction 
@@ -143,9 +147,6 @@
                         </MultiBinding>
                     </ProgressBar.Visibility>
                 </ProgressBar>
-                <Button Width="80" Command="{Binding Path=TestCommand}" 
-                        Margin="5" 
-                        Visibility="{Binding Path=DebugMode, Converter={StaticResource VisibilityConverter}}">测试</Button>
             </StackPanel>
             <ListView Grid.Row="1" 
                       Grid.Column="0"
@@ -228,13 +229,22 @@
                         Binding="{Binding Path=Author}"
                         Header="作者"
                         Width="auto">
-                    </DataGridTextColumn>
-                    <DataGridTextColumn
+                    </DataGridTextColumn>                 
+                    <DataGridTemplateColumn
                         IsReadOnly="True"
-                        Binding="{Binding Path=FileUrlPath}"
                         Header="文件名"
-                        Width="auto">
-                    </DataGridTextColumn>
+                        Width="200">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBox Width="auto"  
+                                         TextWrapping="Wrap" 
+                                         IsReadOnly="True"
+                                         IsInactiveSelectionHighlightEnabled="False"
+                                         Text="{Binding Path=FileFullUrl, Mode=OneWay}" 
+                                         BorderBrush="Transparent"></TextBox>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTextColumn
                         IsReadOnly="True"
                         Binding="{Binding Path=AppendLines}"
@@ -253,12 +263,21 @@
                         Header="总行数"
                         Width="60">
                     </DataGridTextColumn>
-                    <DataGridTextColumn
+                    <DataGridTemplateColumn
                         IsReadOnly="True"
-                        Binding="{Binding Path=Msg}"
                         Header="提交信息"
                         Width="*">
-                    </DataGridTextColumn>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBox Width="auto"  
+                                         TextWrapping="Wrap" 
+                                         IsReadOnly="True"
+                                         IsInactiveSelectionHighlightEnabled="False"
+                                         Text="{Binding Path=Msg, Mode=OneWay}" 
+                                         BorderBrush="Transparent"></TextBox>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTemplateColumn
                         IsReadOnly="True"
                         Header="使用VsCode"

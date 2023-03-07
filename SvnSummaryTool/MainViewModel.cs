@@ -459,6 +459,16 @@ namespace SvnSummaryTool
         }
 
         /// <summary>
+        /// 测试
+        /// </summary>
+        /// <returns></returns>
+        [RelayCommand]
+        private async Task TestAsync()
+        {
+            await CommandTools.ExecuteCommandAsync("explorer .\\Logs\\");
+        }
+
+        /// <summary>
         /// 能否移除待分析的svn日志
         /// </summary>
         private bool CanRemoveSvnLogInfo => CanRemoveSvnLogInfoEnalbe;
@@ -596,16 +606,6 @@ namespace SvnSummaryTool
                    filePath.EndsWith(".Designer.cs") ||
                    filePath.EndsWith(".resx") ||
                    filePath.EndsWith(".ico");
-        }
-
-        /// <summary>
-        /// 测试
-        /// </summary>
-        /// <returns></returns>
-        [RelayCommand]
-        private async Task TestAsync()
-        {
-
         }
 
         /// <summary>
