@@ -194,7 +194,9 @@ namespace SvnSummaryTool
         [RelayCommand(CanExecute = nameof(CanRemoveSvnLogInfo))]
         private void RemoveLog()
         {
+            var next = GetNext(ProjectSvnLogInfo, SelectedSvnLogInfo);
             ProjectSvnLogInfo.Remove(SelectedSvnLogInfo);
+            SelectedSvnLogInfo = next;
         }
         /// <summary>
         /// 能否移除待分析的svn日志
@@ -531,6 +533,33 @@ namespace SvnSummaryTool
         private async Task TestAsync()
         {
 
+        }
+
+        /// <summary>
+        /// 获取下个焦点
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="sourece"></param>
+        /// <param name="target"></param>
+        /// <returns></returns>
+        private T GetNext<T>(IEnumerable<T> sourece, T target)
+            where T : class
+        {
+            bool isCurrent = false;
+            foreach(var t in sourece) 
+            {
+                if (isCurrent)
+                { 
+                    return t;
+                }
+                // 如果目标是当前这个， 则标记下一个返回                
+                if (target.Equals(t))
+                {
+                    isCurrent = true;
+                }
+            }
+            // 如果当前这个是最后一个, 就返回最后一个
+            return sourece.Last();
         }
     }
 
