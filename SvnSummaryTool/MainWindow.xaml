@@ -109,36 +109,47 @@
         <!--分析部分-->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="100"></ColumnDefinition>
+                <ColumnDefinition Width="auto"></ColumnDefinition>
                 <ColumnDefinition Width="*"></ColumnDefinition>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
+                <RowDefinition Height="35"></RowDefinition>
                 <RowDefinition Height="35"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
             </Grid.RowDefinitions>
             <StackPanel Orientation="Horizontal" 
                         Margin="3"
-                        Grid.Column="0"
+                        Grid.Column="0"                        
                         Grid.Row="0"
                         Grid.ColumnSpan="2">
-                <Label>统计信息: 增加的行数:</Label>
-                <Label Width="80" Content="{Binding AppendLineCount}"></Label>
-                <Label>删除的行数:</Label>
-                <Label Width="80" Content="{Binding DeleteLineCount}"></Label>
-                <Label>总行数:</Label>
-                <Label Width="80" Content="{Binding Path=ModifyLineCount}"></Label>
-                <Button Width="80" 
-                        Command="{Binding StartCalculateDiffCommand}" 
-                        Margin="5">计算变更</Button>
+                <Label Margin="0,2" FontWeight="Bold">过滤:</Label>
+                <TextBox
+                    Width="80"
+                    Margin="0,2"
+                    Text="{Binding AboutToAddCondition}"></TextBox>
+                <Button 
+                    Width="80"
+                    Command="{Binding AddNewFilterCommand}" 
+                    Margin="0,2">新增</Button>
+                <Button 
+                    Width="80"
+                    Command="{Binding RemoveFilterCommand}" 
+                    Margin="0,2">移除</Button>
+                <Label Margin="0,2" FontWeight="Bold">统计信息:</Label>
+                <Label Margin="0,2">增加的行数:</Label>
+                <Label Margin="0,2" Width="auto" Content="{Binding AppendLineCount}"></Label>
+                <Label Margin="0,2" >删除的行数:</Label>
+                <Label Margin="0,2" Width="auto" Content="{Binding DeleteLineCount}"></Label>
+                <Label Margin="0,2" >总行数:</Label>
+                <Label Margin="0,2" Width="auto" Content="{Binding Path=ModifyLineCount}"></Label>
+                <Button Margin="0,2" Width="80" Command="{Binding StartCalculateDiffCommand}">计算变更</Button>
                 <!--进度条value值为0~100-->
-                <Button Width="80"
+                <Button Margin="5,2" Width="80"
                         x:Name="downloadDiffbtn"
-                        Command="{Binding DownloadDiffCommand}" 
-                        Margin="5">缓存变更</Button>
-                <Button Width="80" Command="{Binding 
-                    ClearLocalCacheCommand}" 
-                        Margin="5">清空缓存</Button>
-                <ProgressBar Width="80" Margin="5" Value="{Binding Progress}">
+                        Command="{Binding DownloadDiffCommand}">缓存变更</Button>
+                <Button Margin="5,2" Width="80" Command="{Binding 
+                    ClearLocalCacheCommand}">清空缓存</Button>
+                <ProgressBar Margin="5,2" Width="80" Value="{Binding Progress}">
                     <ProgressBar.Visibility>
                         <!--note: 这里没有xaml提示-->
                         <MultiBinding Converter="{StaticResource MultiVisibilityConverter}">
@@ -148,9 +159,35 @@
                     </ProgressBar.Visibility>
                 </ProgressBar>
             </StackPanel>
-            <ListView Grid.Row="1" 
+            <ListView
+                Grid.Column="0"
+                Grid.Row="1"
+                Grid.ColumnSpan="2"
+                ItemsSource="{Binding Filters}"
+                SelectedItem="{Binding SelectedFilterCondition}"
+                Width="auto"
+                SelectionMode="Single"
+                d:ItemsSource="{d:SampleData ItemCount=5}">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox 
+                                    IsChecked="{Binding Path=IsChecked}"
+                                    Content="{Binding Path=Item}">
+                            </CheckBox>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+                <ListView.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" IsItemsHost="True" Margin="2"></WrapPanel>
+                    </ItemsPanelTemplate>
+                </ListView.ItemsPanel>
+            </ListView>
+            <ListView Grid.Row="2" 
                       Grid.Column="0"
-                      ItemsSource="{Binding Authors}"                       
+                      ItemsSource="{Binding Authors}"
+                      Width="auto"
                       x:Name="authorListView"
                       SelectionMode="Single"
                       d:ItemsSource="{d:SampleData ItemCount=5}">
@@ -181,11 +218,11 @@
                 Grid.Column="1"
                 CanUserDeleteRows="False"
                 CanUserResizeColumns="True"
-                Grid.Row="1"
+                Grid.Row="2"
                 AutoGenerateColumns="False"
                 x:Name="datagrid"
                 SelectedItem="{Binding Path=SelectedLogFormat, Mode=TwoWay}"
-                ItemsSource="{Binding DataTableSourece}">
+                ItemsSource="{Binding DataTableSource}">
                 <DataGrid.Columns>
                     <DataGridCheckBoxColumn
                         IsReadOnly="False"

@@ -2,7 +2,10 @@
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="SvnSummaryTool" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
-    <Setting Name="svnDirSaved" Type="System.Collections.Specialized.StringCollection" Scope="User">
+    <Setting Name="SvnDirSaved" Type="System.Collections.Specialized.StringCollection" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="FilterSaved" Type="System.Collections.Specialized.StringCollection" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
   </Settings>

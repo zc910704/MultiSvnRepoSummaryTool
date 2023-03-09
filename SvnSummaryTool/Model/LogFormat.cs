@@ -59,5 +59,9 @@ namespace SvnSummaryTool.Model
                 return baseUrl + filePath;
             }
         }
+        /// <summary>
+        /// 是否已经计算过变更
+        /// </summary>
+        public bool IsCalculateLined { get; set; } = false;
     }
 }

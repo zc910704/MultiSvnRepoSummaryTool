@@ -1,4 +1,5 @@
 ﻿using Microsoft.VisualBasic;
+using NLog.Fluent;
 using SvnSummaryTool.Model;
 using System;
 using System.IO;
@@ -126,35 +127,41 @@ namespace SvnSummaryTool.Utils
         /// <param name="fileName"></param>
         /// <param name="revision"></param>
         /// <param name="localSvnDir"></param>
-        public static async Task<LineChange> GetLineDiff(string fileName,SVNInfo svnInfo, int revision, DiffCheckMode diffCheckMode)
+        public static async Task GetLineDiff(LogFormat logFormat)
         {
-            var appendLines = 0;
-            var removeLines = 0;
-            var localSvnDir = svnInfo.WorkCopyInfo.RootPath;
-            // 是否到达变更区域
-            var reachLineChange = false;
-            //svn diff 命令返回的解释 https://blog.csdn.net/weiwangchao_/article/details/19117191
-            string diffBuffer = await CallSvnDiff(fileName, localSvnDir, revision);
-            var lines = diffBuffer.Split(new string[] { "\r\n" }, StringSplitOptions.None).ToList();
-            foreach (var line in lines)
+            if (!logFormat.IsCalculateLined)
             {
-                if (line.Trim().StartsWith("@"))
+                var appendLines = logFormat.AppendLines;
+                var removeLines = logFormat.RemoveLines;
+                var localSvnDir = logFormat.SvnInfo.WorkCopyInfo.RootPath;
+                // 是否到达变更区域
+                var reachLineChange = false;
+                //svn diff 命令返回的解释 https://blog.csdn.net/weiwangchao_/article/details/19117191
+                string diffBuffer = await CallSvnDiff(logFormat.FileUrlPath, localSvnDir, logFormat.Revision);
+                var lines = diffBuffer.Split(new string[] { "\r\n" }, StringSplitOptions.None).ToList();
+                foreach (var line in lines)
                 {
-                    reachLineChange = true;
-                }
-                if (reachLineChange)
-                {
-                    if (line.StartsWith("+"))
+                    if (line.Trim().StartsWith("@"))
                     {
-                        appendLines++;
+                        reachLineChange = true;
                     }
-                    if (line.StartsWith("-"))
+                    if (reachLineChange)
                     {
-                        removeLines++;
+                        if (line.StartsWith("+"))
+                        {
+                            appendLines++;
+                        }
+                        if (line.StartsWith("-"))
+                        {
+                            removeLines++;
+                        }
                     }
                 }
+                logFormat.AppendLines = appendLines;
+                logFormat.RemoveLines = removeLines;
+                logFormat.TotalLines = appendLines + removeLines;
+                logFormat.IsCalculateLined = true;
             }
-            return new LineChange(appendLines, removeLines);
         }
 
         /// <summary>
@@ -228,49 +235,5 @@ namespace SvnSummaryTool.Utils
             MD5 md5 = MD5.Create();
             return BitConverter.ToString(md5.ComputeHash(UTF8Encoding.UTF8.GetBytes(str))).Replace("-", "");
         }
-    }
-
-    /// <summary>
-    /// svn变更
-    /// </summary>
-    public struct LineChange
-    {
-        /// <summary>
-        /// 新增行
-        /// </summary>
-        public int AppendLine { get; set; }
-        /// <summary>
-        /// 删除行
-        /// </summary>
-        public int RemoveLine { get; set; }
-        /// <summary>
-        /// ctor
-        /// </summary>
-        /// <param name="append"></param>
-        /// <param name="remove"></param>
-        public LineChange(int append, int remove)
-        {
-            AppendLine = append;
-            RemoveLine = remove;
-        }
-    }
-
-    /// <summary>
-    /// svn文件版本差异检查模式
-    /// </summary>
-    public enum DiffCheckMode
-    {
-        /// <summary>
-        /// 本地文件
-        /// </summary>
-        LocalFile,
-        /// <summary>
-        /// 远程url
-        /// </summary>
-        Remote,
-        /// <summary>
-        /// 本地缓存
-        /// </summary>
-        Cached
     }
 }

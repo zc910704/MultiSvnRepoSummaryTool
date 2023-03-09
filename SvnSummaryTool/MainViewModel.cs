@@ -1,11 +1,13 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NLog.Filters;
 using SvnSummaryTool.Model;
 using SvnSummaryTool.Utils;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -16,9 +18,6 @@ namespace SvnSummaryTool
 {
     internal partial class MainViewModel : ObservableObject
     {
-        private static string[] _ignoreFile = ConfigTools.GetConfig("IgnoreFile").Split(';').Where(s => !string.IsNullOrEmpty(s)).ToArray();
-        private static string[] _ignoreFolder = ConfigTools.GetConfig("IgnoreFolder").Split(';').Where(s => !string.IsNullOrEmpty(s)).ToArray();
-
         /// <summary>
         /// 选择的项目路径集合
         /// </summary>
@@ -71,7 +70,7 @@ namespace SvnSummaryTool
         /// 当前统计信息表数据源
         /// </summary>
         [ObservableProperty]
-        private ObservableCollection<LogFormat> _DataTableSourece = new ObservableCollection<LogFormat>();
+        private ObservableCollection<LogFormat> _DataTableSource = new ObservableCollection<LogFormat>();
         /// <summary>
         /// 当前选择用户的新增行数
         /// </summary>
@@ -94,6 +93,21 @@ namespace SvnSummaryTool
         /// </summary>
         [ObservableProperty]
         private int _Progress = 0;
+        /// <summary>
+        /// 需要过滤的提交条件
+        /// </summary>
+        [ObservableProperty]
+        private ObservableCollection<CanCheckedItem<string>> _Filters = new ObservableCollection<CanCheckedItem<string>>();
+        /// <summary>
+        /// 待添加的条件
+        /// </summary>
+        [ObservableProperty]
+        private string _AboutToAddCondition = string.Empty;
+        /// <summary>
+        /// 当前选择的条件
+        /// </summary>
+        [ObservableProperty]
+        private CanCheckedItem<string> _SelectedFilterCondition = null;
         /// <summary>
         /// 调试模式
         /// </summary>
@@ -306,6 +320,7 @@ namespace SvnSummaryTool
                     Progress = value;
                 });
                 await DoCalculateDiffAsync(progress);
+                GenerateDataSource();
             }
             catch ( Exception ex )
             {
@@ -319,7 +334,7 @@ namespace SvnSummaryTool
         private void ToggleSelectedAllLogForCache(bool isChecked)
         {
             isChecked = !isChecked;
-            foreach (var item in DataTableSourece) { item.IsNeedCache = isChecked; }
+            foreach (var item in DataTableSource) { item.IsNeedCache = isChecked; }
         }
         /// <summary>
         /// 下载变更
@@ -378,38 +393,7 @@ namespace SvnSummaryTool
         {
             try
             {
-                var selectedAuthors = Authors
-                    .Where(a => a.IsChecked)
-                    .Select(a => a.Item).ToList();
-                var selectedUserLog = _LogFormats
-                    .Where(log => selectedAuthors.Contains(log.Author));
-
-                if (selectedUserLog != null && selectedUserLog.Any())
-                {
-                    AppendLineCount = selectedUserLog
-                        .Select(s => s.AppendLines)
-                        .Aggregate((l1, l2) => l1 + l2);
-
-                    DeleteLineCount = selectedUserLog
-                        .Select(s => s.RemoveLines)
-                        .Aggregate((l1, l2) => l1 + l2);
-                    DataTableSourece.Clear();
-                    foreach (var item in selectedUserLog
-                        .OrderBy(x => x.CheckTime)
-                        .ThenBy(x => x.Author))
-                    {
-                        // 检查本地是否有该文件缓存
-                        item.IsCached = SvnTools.CheckFileExistInCache(item.FileFullUrl, _DiffSaveDir, item.Revision)
-                            && SvnTools.CheckFileExistInCache(item.FileFullUrl, _DiffSaveDir, item.Revision - 1);
-                        DataTableSourece.Add(item);
-                    }
-                }
-                else
-                {
-                    AppendLineCount = 0;
-                    DeleteLineCount = 0;
-                    DataTableSourece.Clear();
-                }
+                GenerateDataSource();
             }
             catch (Exception ex) 
             {
@@ -436,8 +420,14 @@ namespace SvnSummaryTool
         [RelayCommand]
         private void SaveConfig()
         {
-            Settings.Default.svnDirSaved = new System.Collections.Specialized.StringCollection();
-            Settings.Default.svnDirSaved.AddRange(ProjectsPath.ToArray());
+            Settings.Default.SvnDirSaved = new System.Collections.Specialized.StringCollection();
+            Settings.Default.SvnDirSaved.AddRange(ProjectsPath.ToArray());
+
+            Settings.Default.FilterSaved = new System.Collections.Specialized.StringCollection();
+            foreach (var filter in Filters) 
+            {
+                Settings.Default.FilterSaved.Add($"{filter.Item};{filter.IsChecked}");
+            }            
             Settings.Default.Save();
             LogHelper.Close();
         }
@@ -449,7 +439,7 @@ namespace SvnSummaryTool
         private void Load()
         {
             LogHelper.Debug("Start!");
-            var svnDirSaved = Settings.Default.svnDirSaved;
+            var svnDirSaved = Settings.Default.SvnDirSaved;
             if (svnDirSaved != null && svnDirSaved.Count != 0)
             {
                 foreach (var dir in svnDirSaved)
@@ -460,16 +450,77 @@ namespace SvnSummaryTool
                     }
                 }
             }
+            var ignore = ConfigTools.GetConfig("Ignore").Split(';')
+                    .Where(s => !string.IsNullOrEmpty(s));
+            var userFilters = Settings.Default.FilterSaved;
+            if (userFilters != null)
+            {
+                foreach(var filter in userFilters) 
+                {
+                    var array = filter.Split(";");
+                    if (array.Length > 1 && bool.TryParse(array[1], out bool isChecked))
+                    {
+                        var item = new CanCheckedItem<string>(array[0], isChecked);
+                        Filters.Add(item);
+                    }
+                    
+                }
+            }
+            else
+            {
+                foreach (var item in ignore)
+                {
+                    Filters.Add(new CanCheckedItem<string>(item, true));
+                }
+            }
         }
 
-        /// <summary>
-        /// 测试
-        /// </summary>
-        /// <returns></returns>
-        [RelayCommand]
+    /// <summary>
+    /// 测试
+    /// </summary>
+    /// <returns></returns>
+    [RelayCommand]
         private async Task TestAsync()
         {
             await CommandTools.ExecuteCommandAsync("explorer .\\Logs\\");
+        }
+
+        /// <summary>
+        /// 新增过滤条件
+        /// </summary>
+        [RelayCommand]
+        private void AddNewFilter()
+        {
+            try
+            {
+                var @new = new CanCheckedItem<string>(AboutToAddCondition, true);
+                Filters.Add(@new);
+                SelectedFilterCondition = @new;
+            }
+            catch (Exception ex)
+            {
+                LogHelper.Error("MainViewModel::RemoveFilter |Exception", ex);
+            }
+        }
+
+        /// <summary>
+        /// 移除过滤条件
+        /// </summary>
+        [RelayCommand]
+        private void RemoveFilter()
+        {
+            try
+            {
+                var current = Filters.FirstOrDefault( f => f.Item == AboutToAddCondition);
+                if (current != null && Filters.Any(f => f == current))
+                { 
+                    Filters.Remove(current);
+                }
+            }
+            catch(Exception ex) 
+            {
+                LogHelper.Error("MainViewModel::RemoveFilter |Exception", ex);
+            }
         }
 
         /// <summary>
@@ -486,7 +537,7 @@ namespace SvnSummaryTool
         {
             Progress = 0;
 
-            var source = DataTableSourece.Where(d => d.IsNeedCache);
+            var source = DataTableSource.Where(d => d.IsNeedCache);
             var total = source.Count();
             var pos = 0;
             LogHelper.Debug($"MainViewModel::DoDownloadDiffAsync |start for total {total}");
@@ -517,11 +568,7 @@ namespace SvnSummaryTool
                                 async (entry, cancellationToken) =>
                                 {
                                     // 格式化Log对象，并计算修改行数
-                                    var val = await SvnTools.GetLineDiff(entry.FileUrlPath, entry.SvnInfo, entry.Revision, DiffCheckMode.LocalFile);
-
-                                    entry.AppendLines = val.AppendLine;
-                                    entry.RemoveLines = val.RemoveLine;
-                                    entry.TotalLines = val.AppendLine + val.RemoveLine;
+                                    await SvnTools.GetLineDiff(entry);
                                     Interlocked.Increment(ref pos);
                                     LogHelper.Debug($"MainViewModel::DoCalculateDiffAsync |pos/total = {pos}/{total}");
                                     //await Task.Delay(1000);
@@ -582,38 +629,50 @@ namespace SvnSummaryTool
         /// <returns></returns>
         private bool IsIgnoreFile(string filePath)
         {
-            filePath = filePath.ToLower();
-            foreach (var ignoreFile in _ignoreFile)
+            foreach (var filter in Filters)
             {
-                if (filePath.EndsWith(ignoreFile.ToLower()))
-                    return true;
+                if (filter.IsChecked &&
+                    filePath.Contains(filter.Item, StringComparison.OrdinalIgnoreCase))
+                { return true; }
             }
+            return false;
+            
+        }
 
-            foreach (var ignoreFfolder in _ignoreFolder)
+        /// <summary>
+        /// 创建数据源
+        /// </summary>
+        private void GenerateDataSource()
+        {
+            var selectedAuthors = Authors
+                .Where(a => a.IsChecked)
+                .Select(a => a.Item).ToList();
+            var selectedUserLog = _LogFormats
+                .Where(log => selectedAuthors.Contains(log.Author) && !IsIgnoreFile(log.FileFullUrl));
+            if (selectedUserLog != null && selectedUserLog.Any())
             {
-                if (filePath.Contains(ignoreFfolder.ToLower()))
-                    return true;
+                AppendLineCount = selectedUserLog
+                    .Select(s => s.AppendLines)
+                    .Aggregate((l1, l2) => l1 + l2);
+                DeleteLineCount = selectedUserLog
+                    .Select(s => s.RemoveLines)
+                    .Aggregate((l1, l2) => l1 + l2);
+                foreach (var item in selectedUserLog
+                    .OrderBy(x => x.CheckTime)
+                    .ThenBy(x => x.Author))
+                {
+                    // 检查本地是否有该文件缓存
+                    item.IsCached = SvnTools.CheckFileExistInCache(item.FileFullUrl, _DiffSaveDir, item.Revision)
+                        && SvnTools.CheckFileExistInCache(item.FileFullUrl, _DiffSaveDir, item.Revision - 1);
+                    DataTableSource.Add(item);
+                }
             }
-
-            return filePath.Contains("bin/") ||
-                   filePath.Contains("obj/") ||
-                   filePath.Contains("AutoConfigs/") ||
-                   filePath.EndsWith(".cache") ||
-                   filePath.EndsWith(".csproj") ||
-                   filePath.EndsWith(".sln") ||
-                   //filePath.EndsWith(".txt") ||
-                   filePath.EndsWith(".md") ||
-                   filePath.EndsWith(".xlsx") ||
-                   filePath.EndsWith(".xls") ||
-                   filePath.EndsWith(".doc") ||
-                   filePath.EndsWith(".docs") ||
-                   filePath.EndsWith(".pdf") ||
-                   filePath.EndsWith(".jpg") ||
-                   filePath.EndsWith(".jpge") ||
-                   filePath.EndsWith(".png") ||
-                   filePath.EndsWith(".Designer.cs") ||
-                   filePath.EndsWith(".resx") ||
-                   filePath.EndsWith(".ico");
+            else
+            {
+                AppendLineCount = 0;
+                DeleteLineCount = 0;
+                DataTableSource.Clear();
+            }
         }
 
         /// <summary>
@@ -641,20 +700,6 @@ namespace SvnSummaryTool
             }
             // 如果当前这个是最后一个, 就返回最后一个
             return sourece.Last();
-        }
-    }
-
-
-    internal class CanCheckedItem<T>
-    {
-        public bool IsChecked { get; set; }
-
-        public T Item { get; set; }
-
-        public CanCheckedItem(T item)
-        {
-            this.IsChecked = false;
-            this.Item = item;
         }
     }
 }
