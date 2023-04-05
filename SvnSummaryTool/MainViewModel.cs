@@ -284,12 +284,15 @@ namespace SvnSummaryTool
                 {
                     foreach (var entry in svnlogInfo.Log!.Logentry)
                     {
-                        // 格式化Log对象
-                        var current = ConvertLogEntry(svnlogInfo.SvnInfo, entry);
-                        foreach (var c in current)
+                        if (svnlogInfo.SvnInfo != null)
                         {
-                            _LogFormats.Add(c);
-                        }
+                            // 格式化Log对象
+                            var current = ConvertLogEntry(svnlogInfo.SvnInfo, entry);
+                            foreach (var c in current)
+                            {
+                                _LogFormats.Add(c);
+                            }
+                        }                       
                     }
                 }
 
@@ -644,6 +647,10 @@ namespace SvnSummaryTool
         /// </summary>
         private void GenerateDataSource()
         {
+            AppendLineCount = 0;
+            DeleteLineCount = 0;
+            DataTableSource.Clear();
+
             var selectedAuthors = Authors
                 .Where(a => a.IsChecked)
                 .Select(a => a.Item).ToList();
@@ -666,12 +673,6 @@ namespace SvnSummaryTool
                         && SvnTools.CheckFileExistInCache(item.FileFullUrl, _DiffSaveDir, item.Revision - 1);
                     DataTableSource.Add(item);
                 }
-            }
-            else
-            {
-                AppendLineCount = 0;
-                DeleteLineCount = 0;
-                DataTableSource.Clear();
             }
         }
 
